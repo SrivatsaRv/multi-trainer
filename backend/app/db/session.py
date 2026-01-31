@@ -1,0 +1,15 @@
+from sqlmodel import create_engine, Session, SQLModel
+from app.core.config import settings
+from app.models.user import User
+from app.models.gym import Gym
+from app.models.trainer import Trainer
+from app.models.session import UserSession
+
+engine = create_engine(settings.DATABASE_URL, echo=True)
+
+def init_db():
+    SQLModel.metadata.create_all(engine)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
