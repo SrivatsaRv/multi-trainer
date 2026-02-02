@@ -1,6 +1,6 @@
 import { test, expect, request } from '@playwright/test';
+import { TEST_USER_PASSWORD } from '../test-constants';
 
-const TEST_PASSWORD = 'password123';
 const ADMIN_EMAIL = 'admin@example.com';
 
 // Helper to generate unique emails
@@ -28,7 +28,7 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         await page.goto('/auth/register?role=GYM_ADMIN');
         await page.fill('input[name="full_name"]', 'E2E Test Gym');
         await page.fill('input[name="email"]', gymEmail);
-        await page.fill('input[name="password"]', TEST_PASSWORD);
+        await page.fill('input[name="password"]', TEST_USER_PASSWORD);
         await page.click('button[type="submit"]');
 
         // B. Registration should redirect to dashboard
@@ -64,20 +64,20 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         //     gym = session.exec(select(Gym).where(Gym.name == 'Gym Pending')).first()
         //     if gym: gym.verification_status = 'PENDING'; session.add(gym); session.commit()
         // "
-        
+
         // Setup: Create a gym first via API to speed up
         gymEmail = generateEmail('gym_approve');
         const gymName = "E2E Approve Gym";
 
         // 1. Register User via API
         const regRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/register`, {
-            data: { full_name: gymName, email: gymEmail, password: TEST_PASSWORD, role: 'GYM_ADMIN' }
+            data: { full_name: gymName, email: gymEmail, password: TEST_USER_PASSWORD, role: 'GYM_ADMIN' }
         });
         expect(regRes.ok()).toBeTruthy();
 
         // 2. Login to get Token
         const loginRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/login/access-token`, {
-            form: { username: gymEmail, password: TEST_PASSWORD }
+            form: { username: gymEmail, password: TEST_USER_PASSWORD }
         });
         const { access_token } = await loginRes.json();
 
@@ -112,14 +112,14 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         // --- ADMIN TEST PART using SEEDED DATA ---
         await page.goto('/auth/login');
         await page.fill('input[name="username"]', ADMIN_EMAIL); // seeded admin
-        await page.fill('input[name="password"]', TEST_PASSWORD);
+        await page.fill('input[name="password"]', TEST_USER_PASSWORD);
         await page.click('button[type="submit"]');
 
         await page.click('text=Admin Panel');
 
         // Wait for the verifications page to load
         await expect(page).toHaveURL('/admin/verifications');
-        
+
         // We expect to see 'Gym Pending' from the seed data
         await expect(page.locator('text=Gym Pending')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('text=PENDING').first()).toBeVisible();

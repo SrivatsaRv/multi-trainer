@@ -1,14 +1,49 @@
-"use client";
-
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { Shield, Users, Building, TrendingUp, Settings } from "lucide-react";
+import { Shield, Users, Building, TrendingUp, Calendar } from "lucide-react";
+
+interface AdminMetrics {
+    metrics: {
+        total_users: number
+        total_gyms: number
+        total_trainers: number
+        total_bookings: number
+    }
+    top_gyms: { name: string; count: number }[]
+    top_trainers: { name: string; count: number }[]
+}
 
 export function AdminDashboard() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const router = useRouter();
+    const [data, setData] = useState<AdminMetrics | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchAnalytics() {
+            try {
+                const token = localStorage.getItem("token")
+                const headers: any = {}
+                if (token) headers["Authorization"] = `Bearer ${token}`
+
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/admin/overview`, { headers })
+                if (res.ok) {
+                    const result = await res.json()
+                    setData(result)
+                }
+            } catch (err) {
+                console.error("Failed to fetch admin analytics", err)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchAnalytics()
+    }, []);
+
+    if (loading) return <div>Loading Analytics...</div>
 
     return (
         <div className="space-y-6">
@@ -22,7 +57,7 @@ export function AdminDashboard() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
+                        <div className="text-2xl font-bold">{data?.metrics.total_gyms || 0}</div>
                         <p className="text-sm text-muted-foreground">Active facilities</p>
                     </CardContent>
                 </Card>
@@ -35,7 +70,7 @@ export function AdminDashboard() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
+                        <div className="text-2xl font-bold">{data?.metrics.total_trainers || 0}</div>
                         <p className="text-sm text-muted-foreground">Verified trainers</p>
                     </CardContent>
                 </Card>
@@ -43,26 +78,62 @@ export function AdminDashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Shield className="w-5 h-5" />
-                            Pending Reviews
+                            <Calendar className="w-5 h-5" />
+                            Total Bookings
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
-                        <p className="text-sm text-muted-foreground">Need approval</p>
+                        <div className="text-2xl font-bold">{data?.metrics.total_bookings || 0}</div>
+                        <p className="text-sm text-muted-foreground">Platform wide</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5" />
-                            Platform Revenue
+                            <Users className="w-5 h-5" />
+                            Total Users
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">$0</div>
-                        <p className="text-sm text-muted-foreground">This month</p>
+                        <div className="text-2xl font-bold">{data?.metrics.total_users || 0}</div>
+                        <p className="text-sm text-muted-foreground">Registered accounts</p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Top Performers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Top Gyms (by Bookings)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {data?.top_gyms.map((gym, i) => (
+                                <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                                    <span className="font-medium">{gym.name}</span>
+                                    <span className="text-muted-foreground">{gym.count} bookings</span>
+                                </div>
+                            ))}
+                            {data?.top_gyms.length === 0 && <p className="text-sm text-muted-foreground">No bookings yet.</p>}
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Top Trainers</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {data?.top_trainers.map((t, i) => (
+                                <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
+                                    <span className="font-medium">{t.name}</span>
+                                    <span className="text-muted-foreground">{t.count} bookings</span>
+                                </div>
+                            ))}
+                            {data?.top_trainers.length === 0 && <p className="text-sm text-muted-foreground">No bookings yet.</p>}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -73,39 +144,18 @@ export function AdminDashboard() {
                     <CardTitle>Admin Actions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Button
                             variant="outline"
-                            onClick={() => router.push("/admin/verifications")}
+                            onClick={() => router.push("/dashboard/admin/verifications")}
                         >
                             Review Verifications
                         </Button>
-                        <Button variant="outline">
-                            User Management
-                        </Button>
-                        <Button variant="outline">
-                            Platform Analytics
-                        </Button>
-                        <Button variant="outline">
-                            System Settings
-                        </Button>
-                        <Button variant="outline">
-                            Revenue Reports
-                        </Button>
-                        <Button variant="outline">
-                            Support Tickets
-                        </Button>
+                        {/* Placeholder buttons for future features */}
+                        <Button variant="outline" disabled>User Management</Button>
+                        <Button variant="outline" disabled>System Settings</Button>
+                        <Button variant="outline" disabled>Support Tickets</Button>
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* Recent Platform Activity */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Recent Platform Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">No recent activity</p>
                 </CardContent>
             </Card>
         </div>

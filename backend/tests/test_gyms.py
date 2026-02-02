@@ -4,7 +4,7 @@ def test_create_gym_authenticated(client, test_user):
     # 1. Login to get token
     login_data = {
         "username": "testuser@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     assert response.status_code == 200

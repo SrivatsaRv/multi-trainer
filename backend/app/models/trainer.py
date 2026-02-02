@@ -12,6 +12,7 @@ class TrainerBase(SQLModel):
     certifications: List[Dict[str, str]] = Field(default=[], sa_column=Column(JSON))
     experience_years: int = Field(default=0)
     social_links: Dict[str, str] = Field(default={}, sa_column=Column(JSON))
+    availability: Dict[str, List[str]] = Field(default={}, sa_column=Column(JSON))
     verification_status: VerificationStatus = VerificationStatus.DRAFT
 
 class Trainer(TrainerBase, table=True):
@@ -33,4 +34,5 @@ class TrainerUpdate(BaseModel):
     certifications: Optional[List[Dict[str, str]]] = None
     experience_years: Optional[int] = None
     social_links: Optional[Dict[str, str]] = None
+    availability: Optional[Dict[str, List[str]]] = None
     verification_status: Optional[VerificationStatus] = None

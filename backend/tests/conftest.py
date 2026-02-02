@@ -34,13 +34,15 @@ def client_fixture(session: Session):
     yield client
     app.dependency_overrides.clear()
 
+from tests.test_constants import TEST_USER_EMAIL, TEST_USER_PASSWORD
+
 @pytest.fixture(name="test_user")
 def test_user_fixture(session: Session):
-    print(f"Hashing password: 'password123' type: {type('password123')}")
+    print(f"Hashing password: '{TEST_USER_PASSWORD}' type: {type(TEST_USER_PASSWORD)}")
     user = User(
-        email="testuser@example.com",
+        email=TEST_USER_EMAIL,
         full_name="Test User",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.GYM_ADMIN,
         is_active=True
     )

@@ -1,11 +1,12 @@
 import pytest
 from app.api.api_v1.endpoints.users import read_user_me
+from tests.test_constants import TEST_USER_PASSWORD
 
 def test_read_user_me(client, test_user):
     # Login to get token
     login_data = {
         "username": test_user.email,
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]

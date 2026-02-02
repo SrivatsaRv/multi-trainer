@@ -1,0 +1,3 @@
+import os
+TEST_USER_EMAIL = os.environ["TEST_USER_EMAIL"]
+TEST_USER_PASSWORD = os.environ["TEST_USER_PASSWORD"]

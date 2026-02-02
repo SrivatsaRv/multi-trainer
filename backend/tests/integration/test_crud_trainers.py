@@ -1,12 +1,13 @@
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from tests.test_constants import TEST_USER_PASSWORD
 from app.models.trainer import Trainer, VerificationStatus
 
 def test_trainer_crud_lifecycle(client: TestClient, session: Session):
     # 1. Register & Login as Trainer
     email = "crud_trainer@example.com"
-    password = "password123"
+    password = TEST_USER_PASSWORD
     
     # Register
     r = client.post("/api/v1/auth/register", json={

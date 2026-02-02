@@ -1,8 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+// Drizzle imports removed
 
 export const authOptions: NextAuthOptions = {
     session: {
@@ -21,21 +19,44 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
 
-                // In a real app, verify password hash. 
-                // For this MVP, we'll demonstrate the lookup and role retrieval.
-                const user = await db.query.users.findFirst({
-                    where: eq(users.email, credentials.email),
-                });
+                try {
+                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/login/access-token`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: new URLSearchParams({
+                            username: credentials.email,
+                            password: credentials.password,
+                        }),
+                    });
 
-                if (!user) return null;
+                    if (!res.ok) return null;
 
-                // Simplified for MVP - in production use bcrypt/argon2
-                return {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
-                };
+                    const data = await res.json();
+
+                    // Decode JWT or fetch user profile if needed. 
+                    // For now, assuming the login endpoint returns token.
+                    // We might need to fetch /users/me to get the role/id if not in token response.
+                    // Let's assume we fetch /users/me with the token.
+
+                    const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/users/me`, {
+                        headers: { Authorization: `Bearer ${data.access_token}` },
+                    });
+
+                    if (!meRes.ok) return null;
+
+                    const user = await meRes.json();
+
+                    return {
+                        id: user.id.toString(),
+                        email: user.email,
+                        name: user.full_name,
+                        role: user.role,
+                        accessToken: data.access_token, // Store token if needed, though session usually handles it
+                    };
+                } catch (e) {
+                    console.error("Login Check Failed", e);
+                    return null;
+                }
             },
         }),
     ],

@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from tests.test_constants import TEST_USER_PASSWORD
 from app.models.user import User
 from app.models.gym import Gym, VerificationStatus
 from app.models.trainer import Trainer
@@ -9,7 +10,7 @@ def test_gym_lifecycle_draft_state(client: TestClient, session: Session):
     reg_payload = {
         "full_name": "Integration Gym Owner",
         "email": "int_gym_owner@example.com",
-        "password": "password123",
+        "password": TEST_USER_PASSWORD,
         "role": "GYM_ADMIN"
     }
     r = client.post("/api/v1/auth/register", json=reg_payload)
@@ -18,7 +19,7 @@ def test_gym_lifecycle_draft_state(client: TestClient, session: Session):
     # 2. Login
     login_payload = {
         "username": "int_gym_owner@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     r = client.post("/api/v1/auth/login/access-token", data=login_payload)
     assert r.status_code == 200
@@ -47,7 +48,7 @@ def test_trainer_lifecycle_draft_state(client: TestClient, session: Session):
     reg_payload = {
         "full_name": "Integration Trainer",
         "email": "int_trainer@example.com",
-        "password": "password123",
+        "password": TEST_USER_PASSWORD,
         "role": "TRAINER"
     }
     r = client.post("/api/v1/auth/register", json=reg_payload)
@@ -56,7 +57,7 @@ def test_trainer_lifecycle_draft_state(client: TestClient, session: Session):
     # 2. Login
     login_payload = {
         "username": "int_trainer@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     r = client.post("/api/v1/auth/login/access-token", data=login_payload)
     assert r.status_code == 200

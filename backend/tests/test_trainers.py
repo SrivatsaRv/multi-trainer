@@ -1,13 +1,13 @@
 from app.models.trainer import Trainer
 from app.models.user import User, UserRole
-from app.core.security import get_password_hash
+from tests.test_constants import TEST_USER_PASSWORD
 
 def test_create_trainer_authenticated(client, session):
     # 1. Create a Trainer User (as test_user is GYM_ADMIN usually)
     user2 = User(
         email="trainer@example.com",
         full_name="New Trainer",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.TRAINER,
         is_active=True
     )
@@ -18,7 +18,7 @@ def test_create_trainer_authenticated(client, session):
     # 2. Login
     login_data = {
         "username": "trainer@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     assert response.status_code == 200

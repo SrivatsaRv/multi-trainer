@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
+from tests.test_constants import TEST_USER_PASSWORD
 from app.models.user import User, UserRole
 from app.models.gym import Gym
 from app.models.trainer import Trainer
@@ -7,7 +8,7 @@ from app.models.trainer import Trainer
 def test_gym_trainer_invite_flow(client: TestClient, session: Session):
     # 1. Register Gym Admin
     gym_email = "int_gym_assoc@example.com"
-    gym_password = "password123"
+    gym_password = TEST_USER_PASSWORD
     gym_reg = {
         "full_name": "Integration Gym Owner",
         "email": gym_email,
@@ -26,7 +27,7 @@ def test_gym_trainer_invite_flow(client: TestClient, session: Session):
     
     # 2. Register Trainer
     trainer_email = "int_trainer_assoc@example.com"
-    trainer_password = "password123"
+    trainer_password = TEST_USER_PASSWORD
     trainer_reg = {
         "full_name": "Integration Trainer",
         "email": trainer_email,
@@ -88,7 +89,7 @@ def test_gym_trainer_invite_flow(client: TestClient, session: Session):
 def test_trainer_apply_flow(client: TestClient, session: Session):
     # 1. Register & Login Gym Admin
     gym_email = "int_gym_apply@example.com"
-    gym_password = "password123"
+    gym_password = TEST_USER_PASSWORD
     client.post("/api/v1/auth/register", json={
         "full_name": "Gym Target", "email": gym_email, "password": gym_password, "role": "GYM_ADMIN"
     })
@@ -102,7 +103,7 @@ def test_trainer_apply_flow(client: TestClient, session: Session):
 
     # 2. Register & Login Trainer
     tr_email = "int_trainer_apply@example.com"
-    tr_password = "password123"
+    tr_password = TEST_USER_PASSWORD
     client.post("/api/v1/auth/register", json={
         "full_name": "Applicant Trainer", "email": tr_email, "password": tr_password, "role": "TRAINER"
     })

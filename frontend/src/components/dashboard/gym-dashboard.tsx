@@ -92,13 +92,19 @@ export function GymDashboard() {
                         >
                             Manage Trainers
                         </Button>
-                        <Button variant="outline">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/gym/${profile?.id}/bookings`)}
+                        >
                             View Bookings
                         </Button>
                         <Button variant="outline">
                             Update Amenities
                         </Button>
-                        <Button variant="outline">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/gym/${profile?.id}/analytics`)}
+                        >
                             Analytics
                         </Button>
                     </div>

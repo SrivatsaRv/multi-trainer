@@ -129,17 +129,29 @@ export function TrainerDashboard() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button variant="outline">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/trainer/${profile?.id}/schedule`)}
+                        >
                             View Schedule
                         </Button>
-                        <Button variant="outline">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/trainer/${profile?.id}/sessions`)}
+                        >
                             Client Sessions
                         </Button>
-                        <Button variant="outline">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/trainer/${profile?.id}/availability`)}
+                        >
                             Update Availability
                         </Button>
-                        <Button variant="outline">
-                            Earnings Report
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/dashboard/trainer/${profile?.id}/analytics`)}
+                        >
+                            Trainer Analytics
                         </Button>
                     </div>
                 </CardContent>

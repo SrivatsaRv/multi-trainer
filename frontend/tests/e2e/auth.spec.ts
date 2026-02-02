@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { TEST_USER_EMAIL, TEST_USER_PASSWORD } from '../test-constants';
 
 const BASE_URL = 'http://localhost:3000';
 const API_URL = 'http://localhost:8000';
@@ -35,12 +36,14 @@ test.describe('Authentication Flow', () => {
         await expect(page.locator('[data-slot="card-title"]', { hasText: /login/i })).toBeVisible();
     });
 
+    // ...
+
     test('should successfully login with valid credentials', async ({ page }) => {
         await page.goto(`${BASE_URL}/auth/login`);
 
         // Fill in login form
-        await page.getByLabel(/email/i).fill('gym_draft@example.com');
-        await page.getByLabel(/password/i).fill('password123');
+        await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
 
         // Submit form
         await page.getByRole('button', { name: /login/i }).click();
@@ -74,7 +77,7 @@ test.describe('Authentication Flow', () => {
         // Login first
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill('gym_draft@example.com');
-        await page.getByLabel(/password/i).fill('password123');
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /login/i }).click();
 
         // Wait for redirect
@@ -96,7 +99,7 @@ test.describe('Authentication Flow', () => {
         // Login first
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill('gym_draft@example.com');
-        await page.getByLabel(/password/i).fill('password123');
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /login/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
@@ -117,8 +120,8 @@ test.describe('Authentication Flow', () => {
     test('should maintain session across page navigation', async ({ page }) => {
         // Login
         await page.goto(`${BASE_URL}/auth/login`);
-        await page.getByLabel(/email/i).fill('gym_draft@example.com');
-        await page.getByLabel(/password/i).fill('password123');
+        await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /login/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
@@ -157,8 +160,8 @@ test.describe('Authentication Flow', () => {
     test('should only allow one session per user', async ({ page, context }) => {
         // Login in first tab
         await page.goto(`${BASE_URL}/auth/login`);
-        await page.getByLabel(/email/i).fill('gym_draft@example.com');
-        await page.getByLabel(/password/i).fill('password123');
+        await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /login/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
@@ -167,8 +170,8 @@ test.describe('Authentication Flow', () => {
         // Open new tab and login again
         const newPage = await context.newPage();
         await newPage.goto(`${BASE_URL}/auth/login`);
-        await newPage.getByLabel(/email/i).fill('gym_draft@example.com');
-        await newPage.getByLabel(/password/i).fill('password123');
+        await newPage.getByLabel(/email/i).fill(TEST_USER_EMAIL);
+        await newPage.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await newPage.getByRole('button', { name: /login/i }).click();
         await newPage.waitForURL(`${BASE_URL}/dashboard`);
 

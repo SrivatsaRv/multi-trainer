@@ -192,6 +192,56 @@ def invite_trainer(
         trainer_id=trainer.id,
         status=AssociationStatus.INVITED
     )
-    session.add(new_link)
-    session.commit()
-    return {"message": f"Invitation sent to {target_user.email}"}
+@router.get("/{gym_id}/bookings", response_model=List[Any])
+def read_gym_bookings(
+    gym_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    gym = session.get(Gym, gym_id)
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gym not found")
+    if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    from app.models.booking import Booking
+    from app.models.trainer import Trainer
+    from app.models.user import User as UserModel
+    
+    # Fetch bookings for this gym
+    # Join with User (Client) and Trainer for display
+    # This might be heavy if many bookings, simplified for MVP
+    # Optimized query with aliases
+    from sqlalchemy.orm import aliased
+    ClientUser = aliased(UserModel)
+    TrainerUser = aliased(UserModel)
+    
+    statement = (
+        select(Booking, ClientUser, Trainer, TrainerUser)
+        .join(ClientUser, Booking.user_id == ClientUser.id)
+        .join(Trainer, Booking.trainer_id == Trainer.id)
+        .join(TrainerUser, Trainer.user_id == TrainerUser.id)
+        .where(Booking.gym_id == gym_id)
+        .order_by(Booking.start_time.desc())
+        .limit(100)
+    )
+    
+    bookings = session.exec(statement).all()
+    
+    results = []
+    for booking, client, trainer, trainer_user in bookings:
+        results.append({
+            "id": booking.id,
+            "start_time": booking.start_time,
+            "end_time": booking.end_time,
+            "status": booking.status,
+            "client": {
+                "name": client.full_name,
+                "email": client.email
+            },
+            "trainer": {
+                "name": trainer_user.full_name,
+                "id": trainer.id
+            }
+        })
+    return results

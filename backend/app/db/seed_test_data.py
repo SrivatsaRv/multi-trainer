@@ -18,7 +18,7 @@ from app.models.trainer import Trainer
 from app.core.security import get_password_hash
 
 # Get password from ENV or default (SAFE: local dev only)
-TEST_PASSWORD = os.getenv("TEST_USER_PASSWORD", "password123")
+TEST_PASSWORD = os.environ["TEST_USER_PASSWORD"]
 
 PERSONAS = [
     # Role, Email, GymState/TrainerState

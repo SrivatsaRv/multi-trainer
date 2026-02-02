@@ -4,8 +4,10 @@ from jose import jwt
 from app.core.security import create_access_token, verify_password, get_password_hash
 from app.core.config import settings
 
-def test_password_hashing():
-    password = "testpassword123"
+from tests.test_constants import TEST_USER_PASSWORD
+
+def test_get_password_hash():
+    password = TEST_USER_PASSWORD
     hashed = get_password_hash(password)
     
     assert hashed != password

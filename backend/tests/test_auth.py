@@ -3,13 +3,14 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import select
 from app.api.api_v1.endpoints.auth import register, login_access_token, logout
 from app.models.user import User, UserRole
-from app.core.security import get_password_hash, verify_password
+from app.core.security import get_password_hash
 from app.core.session_manager import get_active_session
+from tests.test_constants import TEST_USER_EMAIL, TEST_USER_PASSWORD, verify_password
 
 def test_register_new_user(client, session):
     user_data = {
         "email": "newuser@example.com",
-        "password": "newpassword123",
+        "password": f"new{TEST_USER_PASSWORD}",
         "full_name": "New User"
     }
     
@@ -35,7 +36,7 @@ def test_register_new_user(client, session):
 def test_register_duplicate_email(client, test_user):
     user_data = {
         "email": test_user.email,
-        "password": "password123",
+        "password": TEST_USER_PASSWORD,
         "full_name": "Duplicate User"
     }
     
@@ -47,7 +48,7 @@ def test_register_duplicate_email(client, test_user):
 def test_login_valid_credentials(client, test_user):
     form_data = {
         "username": test_user.email,
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     
     response = client.post("/api/v1/auth/login/access-token", data=form_data)
@@ -60,7 +61,7 @@ def test_login_valid_credentials(client, test_user):
 def test_login_invalid_email(client):
     form_data = {
         "username": "nonexistent@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     
     response = client.post("/api/v1/auth/login/access-token", data=form_data)
@@ -83,7 +84,7 @@ def test_login_inactive_user(client, session):
     # Create inactive user
     inactive_user = User(
         email="inactive@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.TRAINER,
         is_active=False
     )
@@ -92,7 +93,7 @@ def test_login_inactive_user(client, session):
     
     form_data = {
         "username": "inactive@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     
     response = client.post("/api/v1/auth/login/access-token", data=form_data)

@@ -14,6 +14,7 @@ class UserBase(SQLModel):
     full_name: Optional[str] = None
     role: UserRole = UserRole.TRAINER
     is_active: bool = True
+    is_demo: bool = Field(default=False, description="Flag to identify demo/test users")
 
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

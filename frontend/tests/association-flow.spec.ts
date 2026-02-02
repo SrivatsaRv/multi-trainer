@@ -1,6 +1,9 @@
 
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { TEST_USER_PASSWORD } from './test-constants';
+
+const BASE_URL = 'http://localhost:3000';
 
 // Helper to generate unique credentials
 const uniqueId = () => Math.random().toString(36).substring(7);
@@ -8,7 +11,6 @@ const uniqueId = () => Math.random().toString(36).substring(7);
 test.describe('Gym-Trainer Association Flow', () => {
     const gymEmail = `gym_e2e_${uniqueId()}@example.com`;
     const trainerEmail = `trainer_e2e_${uniqueId()}@example.com`;
-    const password = 'password123';
 
     test('Gym Admin can invite a trainer', async ({ page }) => {
         // 1. Register Trainer (API shortcut to save time, or UI flow)

@@ -4,7 +4,7 @@ Manages persistent demo accounts for manual UI testing.
 """
 import sys
 import os
-from sqlmodel import Session, select, create_engine
+from sqlmodel import Session, select, create_engine, SQLModel
 from typing import List, Tuple
 
 # Ensure we can import app modules
@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.gym import Gym, VerificationStatus
 from app.models.trainer import Trainer
 from app.models.session import UserSession
+from app.models.booking import Booking, SessionPackage, BookingStatus
 from app.core.config import settings
 from app.core.security import get_password_hash
 
@@ -26,10 +27,10 @@ except Exception:
     db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/app")
     engine = create_engine(db_url)
 
-DEMO_PASSWORD = "password123"
-DEMO_GYM_PASSWORD = "gym123"
-DEMO_TRAINER_PASSWORD = "trainer123"
-DEMO_ADMIN_PASSWORD = "admin123"
+DEMO_PASSWORD = os.environ["DEMO_PASSWORD"]
+DEMO_GYM_PASSWORD = os.environ["DEMO_GYM_PASSWORD"]
+DEMO_TRAINER_PASSWORD = os.environ["DEMO_TRAINER_PASSWORD"]
+DEMO_ADMIN_PASSWORD = os.environ["DEMO_ADMIN_PASSWORD"]
 
 # (Role, Email, VerificationStatus, Password)
 DEMO_PERSONAS: List[Tuple[str, str, str, str]] = [
@@ -72,7 +73,8 @@ def seed():
                 full_name=f"Demo {role_str} {status or 'Admin'}",
                 hashed_password=get_password_hash(password),
                 role=actual_role,
-                is_active=True
+                is_active=True,
+                is_demo=True # Mark as demo user
             )
             session.add(user)
             session.commit()
@@ -98,6 +100,30 @@ def seed():
             session.commit()
             print(f"  ✅ {email} -> {status or 'ADMIN'}")
 
+def clean_gyms():
+    print("🧹 Cleaning Demo Gyms (is_demo=True, role=GYM_ADMIN)...")
+    with Session(engine) as session:
+        demo_gym_admins = session.exec(select(User).where(User.is_demo == True, User.role == "GYM_ADMIN")).all()
+        for user in demo_gym_admins:
+             print(f"  Deleting demo gym admin: {user.email}")
+             if user.gym:
+                 session.delete(user.gym)
+             session.delete(user)
+        session.commit()
+    print("Done.")
+
+def clean_trainers():
+    print("🧹 Cleaning Demo Trainers (is_demo=True, role=TRAINER)...")
+    with Session(engine) as session:
+        demo_trainers = session.exec(select(User).where(User.is_demo == True, User.role == "TRAINER")).all()
+        for user in demo_trainers:
+             print(f"  Deleting demo trainer: {user.email}")
+             if user.trainer:
+                 session.delete(user.trainer)
+             session.delete(user)
+        session.commit()
+    print("Done.")
+            
 def seed_gyms():
     print(f"🏋️  Seeding Demo Gyms (Password: {DEMO_PASSWORD})")
     with Session(engine) as session:
@@ -122,7 +148,8 @@ def seed_gyms():
                 full_name=f"Demo Gym {status}",
                 hashed_password=get_password_hash(DEMO_PASSWORD),
                 role="GYM_ADMIN",
-                is_active=True
+                is_active=True,
+                is_demo=True
             )
             session.add(user)
             session.commit()
@@ -163,7 +190,8 @@ def seed_trainers():
                 full_name=f"Demo Trainer {status}",
                 hashed_password=get_password_hash(DEMO_PASSWORD),
                 role="TRAINER",
-                is_active=True
+                is_active=True,
+                is_demo=True
             )
             session.add(user)
             session.commit()
@@ -178,38 +206,104 @@ def seed_trainers():
             session.commit()
             print(f"  ✅ {email} -> {status}")
 
-def clean():
-    print("🧹 Cleaning All Demo Users...")
+from faker import Faker
+import random
+from datetime import datetime, timedelta
+
+def seed_analytics():
+    print("📈 Seeding Analytics Data (Bookings & Packages)...")
+    SQLModel.metadata.create_all(engine)
+    fake = Faker('en_IN') # Use Indian locale for INR context
+    
     with Session(engine) as session:
-        for persona in DEMO_PERSONAS:
-            # DEMO_PERSONAS items are tuples of 4: (Role, Email, VerificationStatus, Password)
-            # The email is at index 1
-            email = persona[1]
+        # 1. Get all Gyms
+        gyms = session.exec(select(Gym)).all()
+        
+        for gym in gyms:
+            print(f"  Processing Gym: {gym.name}")
             
-            existing = session.exec(select(User).where(User.email == email)).first()
-            if existing:
-                # Clean sessions first
-                sessions = session.exec(select(UserSession).where(UserSession.user_id == existing.id)).all()
-                for s in sessions:
-                    session.delete(s)
+            # 2. Create Session Packages (Revenue Source)
+            packages = [
+                SessionPackage(name="Single Drop-in", price_inr=500, session_count=1, gym_id=gym.id),
+                SessionPackage(name="5 Session Pack", price_inr=2200, session_count=5, gym_id=gym.id),
+                SessionPackage(name="10 Session Pack", price_inr=4000, session_count=10, gym_id=gym.id),
+                SessionPackage(name="Monthly Unlimited", price_inr=8000, session_count=30, gym_id=gym.id),
+            ]
+            for p in packages:
+                session.add(p)
+            session.commit()
+            
+            # 3. Get Trainers and a subset of Users (as Clients)
+            trainers = session.exec(select(Trainer)).all() # In a real app, query by gym assoc
+            # For demo simplified, assume all trainers available to all gyms or filter if needed. 
+            # Ideally verify GymTrainer association, but for demo_data let's keep it simple or strictly association based?
+            # Let's strictly check association if possible, or just grab all for robust seeding if assoc is empty.
+            
+            # Filter trainers associated with this gym
+            # gym.trainers is available via relationship
+            gym_trainers = gym.trainers
+            if not gym_trainers:
+                print(f"    ⚠️ No trainers found for {gym.name}, attempting to associate one...")
+                all_trainers = session.exec(select(Trainer)).all()
+                if all_trainers:
+                    # Pick a random trainer to associate
+                    random_trainer = random.choice(all_trainers)
+                    # Create Association
+                    # Need to import GymTrainer if not imported.
+                    # It is imported in app.models.gym (as string?) No, GymTrainer is in app.models.associations
+                    # I need to import it.
+                    from app.models.associations import GymTrainer, AssociationStatus
+                    assoc = GymTrainer(gym_id=gym.id, trainer_id=random_trainer.id, status=AssociationStatus.ACTIVE)
+                    session.add(assoc)
+                    session.commit()
+                    session.refresh(gym)
+                    gym_trainers = gym.trainers
+                    print(f"    ✅ Associated {random_trainer.user.full_name} with {gym.name}")
+                else:
+                     print(f"    ❌ No trainers exist in DB at all. Skipping bookings.")
+                     continue
 
-                if existing.gym:
-                    session.delete(existing.gym)
-                if existing.trainer:
-                    session.delete(existing.trainer)
-                session.delete(existing)
-                print(f"  Deleted {email}")
-        session.commit()
-    print("Done.") # Clean gyms (implied by users deletion)
+            clients = session.exec(select(User).where(User.role == "CLIENT")).all()
+            if not clients:
+                # Create a few dummy clients if none exist
+                for i in range(5):
+                    c = User(email=f"client_{gym.id}_{i}@example.com", full_name=fake.name(), hashed_password=get_password_hash("client123"), role="CLIENT")
+                    session.add(c)
+                    clients.append(c)
+                session.commit()
 
-def clean_gyms():
-    print("🧹 Cleaning Demo Gyms...")
-    # ... (skipping implementing full clean_gyms logic update for brevity, primary use is seed() or clean())
-    # Actually, let's keep it consistent or just ignore for now as we use seed() mostly.
-    pass
-
-def clean_trainers():
-     pass
+            # 4. Generate Bookings (Past 6 Months + Future 2 Weeks)
+            start_date = datetime.now() - timedelta(days=180)
+            end_date = datetime.now() + timedelta(days=14)
+            
+            current = start_date
+            while current < end_date:
+                # Randomly determine if a booking happens this hour
+                if current.hour >= 6 and current.hour <= 20: # Operating hours 6am-8pm
+                     if random.random() < 0.3: # 30% chance of booking per hour slot
+                        trainer = random.choice(gym_trainers)
+                        client = random.choice(clients)
+                        
+                        status = BookingStatus.COMPLETED if current < datetime.now() else BookingStatus.SCHEDULED
+                        if current < datetime.now() and random.random() < 0.1:
+                            status = BookingStatus.CANCELLED
+                        
+                        booking = Booking(
+                            gym_id=gym.id,
+                            trainer_id=trainer.id,
+                            user_id=client.id,
+                            start_time=current,
+                            end_time=current + timedelta(hours=1),
+                            status=status
+                        )
+                        session.add(booking)
+                
+                current += timedelta(hours=1)
+            
+            session.commit()
+            print(f"    ✅ Generated bookings for {gym.name}")
+            
+    print("Done seeding analytics.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -229,5 +323,7 @@ if __name__ == "__main__":
         clean_gyms()
     elif cmd == "clean-trainers":
         clean_trainers()
+    elif cmd == "seed-analytics":
+        seed_analytics()
     else:
         print(f"Unknown command: {cmd}")

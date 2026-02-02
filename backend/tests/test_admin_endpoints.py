@@ -2,7 +2,7 @@ import pytest
 from app.models.user import User, UserRole
 from app.models.gym import Gym, VerificationStatus
 from app.models.trainer import Trainer
-from app.core.security import get_password_hash
+from tests.test_constants import TEST_USER_PASSWORD
 
 def test_approve_gym(client, session, test_user):
     # Create a gym in pending status
@@ -20,7 +20,7 @@ def test_approve_gym(client, session, test_user):
     # Create super admin user (using SAAS_ADMIN)
     admin_user = User(
         email="admin@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.SAAS_ADMIN,
         is_active=True
     )
@@ -30,7 +30,7 @@ def test_approve_gym(client, session, test_user):
     # Login as admin
     login_data = {
         "username": "admin@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]
@@ -59,7 +59,7 @@ def test_reject_gym(client, session, test_user):
     # Create super admin user (using SAAS_ADMIN)
     admin_user = User(
         email="admin@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.SAAS_ADMIN,
         is_active=True
     )
@@ -69,7 +69,7 @@ def test_reject_gym(client, session, test_user):
     # Login as admin
     login_data = {
         "username": "admin@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]
@@ -86,7 +86,7 @@ def test_approve_trainer(client, session):
     # Create trainer user
     trainer_user = User(
         email="trainer@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.TRAINER,
         is_active=True
     )
@@ -107,7 +107,7 @@ def test_approve_trainer(client, session):
     # Create super admin user (using SAAS_ADMIN)
     admin_user = User(
         email="admin@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.SAAS_ADMIN,
         is_active=True
     )
@@ -117,7 +117,7 @@ def test_approve_trainer(client, session):
     # Login as admin
     login_data = {
         "username": "admin@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]
@@ -145,7 +145,7 @@ def test_list_verifications(client, session, test_user):
     # Create super admin user (using SAAS_ADMIN)
     admin_user = User(
         email="admin@example.com",
-        hashed_password=get_password_hash("password123"),
+        hashed_password=get_password_hash(TEST_USER_PASSWORD),
         role=UserRole.SAAS_ADMIN,
         is_active=True
     )
@@ -155,7 +155,7 @@ def test_list_verifications(client, session, test_user):
     # Login as admin
     login_data = {
         "username": "admin@example.com",
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]
@@ -174,7 +174,7 @@ def test_admin_access_denied_for_non_admin(client, test_user):
     # Login as regular user
     login_data = {
         "username": test_user.email,
-        "password": "password123"
+        "password": TEST_USER_PASSWORD
     }
     response = client.post("/api/v1/auth/login/access-token", data=login_data)
     token = response.json()["access_token"]

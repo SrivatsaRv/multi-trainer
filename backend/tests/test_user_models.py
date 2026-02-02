@@ -38,12 +38,12 @@ def test_user_create_model():
     
     user_create = UserCreate(
         email="new@example.com",
-        password="password123",
+        password=TEST_USER_PASSWORD,
         full_name="New User"
     )
     
     assert user_create.email == "new@example.com"
-    assert user_create.password == "password123"
+    assert user_create.password == TEST_USER_PASSWORD
     assert user_create.full_name == "New User"
 
 def test_user_update_model():

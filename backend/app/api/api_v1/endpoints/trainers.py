@@ -152,3 +152,49 @@ def apply_to_gym(
     session.add(new_link)
     session.commit()
     return {"message": "Application sent to gym"}
+
+@router.get("/{trainer_id}/bookings", response_model=List[Any])
+def read_trainer_bookings(
+    trainer_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    trainer = session.get(Trainer, trainer_id)
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+    if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
+         raise HTTPException(status_code=403, detail="Not authorized")
+
+    from app.models.booking import Booking
+    from app.models.gym import Gym
+    from app.models.user import User as UserModel
+
+    # Aliases for clarity (though not strictly needed if models are distinct)
+    # Join Booking -> Gym
+    # Join Booking -> User (Client)
+    bookings = session.exec(
+        select(Booking, Gym, UserModel)
+        .join(Gym, Booking.gym_id == Gym.id)
+        .join(UserModel, Booking.user_id == UserModel.id)
+        .where(Booking.trainer_id == trainer_id)
+        .order_by(Booking.start_time.asc())
+        .limit(100)
+    ).all()
+
+    results = []
+    for booking, gym, client in bookings:
+        results.append({
+            "id": booking.id,
+            "start_time": booking.start_time,
+            "end_time": booking.end_time,
+            "status": booking.status,
+            "gym": {
+                "name": gym.name,
+                "location": gym.location
+            },
+            "client": {
+                "name": client.full_name,
+                "email": client.email
+            }
+        })
+    return results

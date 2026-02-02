@@ -1,105 +1,151 @@
-.PHONY: help up down build logs shell-backend test-backend test-e2e seed-demo-users clean-demo-users clean-all sitrep
+.PHONY: help build up down logs sitrep seed-demo-users seed-gyms seed-trainers clean-demo-users clean-gyms clean-trainers lint format unit-tests integration-tests test-e2e test-all investor-demo-setup prod-all dev-all shell-backend db-shell admin ci-pipeline
+
+# --- Configuration ---
+BACKEND_CMD := docker-compose exec -T -e PYTHONPATH=. backend
+BACKEND_SHELL := docker-compose exec backend
+FRONTEND_DIR := frontend
 
 help:
-	@echo "Available commands:"
-	@echo "  make up                - Start services in background"
-	@echo "  make down              - Stop services"
-	@echo "  make build             - Rebuild and start services"
-	@echo "  make logs              - Tail logs"
-	@echo "  make sitrep            - Show system status (DB counts, Health)"
-	@echo "  make seed-demo-users   - Create all demo users (Gyms + Trainers + Admin)"
-	@echo "  make seed-gyms         - Create demo Gyms only"
-	@echo "  make seed-trainers     - Create demo Trainers only"
-	@echo "  make clean-demo-users  - Remove all demo users"
-	@echo "  make clean-gyms        - Remove demo Gyms only"
-	@echo "  make clean-trainers    - Remove demo Trainers only"
-	@echo "  make test-backend      - Run backend tests"
-	@echo "  make test-e2e          - Run frontend E2E tests"
-	@echo "  make shell-backend     - Access backend container shell"
+	@echo "======================================================================"
+	@echo "   MULTI-TRAINER PLATFORM - MAKEFILE HELP"
+	@echo "======================================================================"
+	@echo ""
+	@echo "CI/CD STAGES (Pipeline Order)"
+	@echo "  1. make build            : Build Docker images (Artifact Stage)"
+	@echo "  2. make up               : Start Ephemeral Test Environment (infra-provision)"
+	@echo "  3. make lint             : Run Static Analysis (flake8, eslint)"
+	@echo "  4. make unit-tests       : Run Fast Tests (No DB required theoretically, but runs in container)"
+	@echo "  5. make integration-tests: Run DB-dependent Backend Tests"
+	@echo "  6. make test-e2e         : Run Full Browser Tests (Playwright)"
+	@echo "  7. make down             : Cleanup Environment"
+	@echo ""
+	@echo "COMPOSED WORKFLOWS (Dev & Prod)"
+	@echo "  make ci-pipeline         : Run FULL Pipeline (Build -> Up -> Lint -> Test-All -> Down)"
+	@echo "  make prod-all            : Clean Build + Static Data + All Tests + Sitrep (Ready for Review)"
+	@echo "  make dev-all             : Clean Build + Static Data + Tests + Logs (Debug Mode)"
+	@echo "  make investor-demo-setup : Production-like Setup + Faker Data (Demo Ready)"
+	@echo ""
+	@echo "DEVELOPMENT UTILITIES"
+	@echo "  make format              : Format Code (black, isort)"
+	@echo "  make logs                : Tail Logs"
+	@echo "  make sitrep              : System Status Check"
+	@echo "  make shell-backend       : Shell into Backend"
+	@echo "  make db-shell            : SQL Shell"
+	@echo "  make admin cmd=...       : Run CLI Admin Commands"
+	@echo ""
+	@echo "DATA OPERATIONS"
+	@echo "  make seed-demo-users     : Seed Static Demo Users"
+	@echo "  make clean-demo-users    : Remove Demo Users"
+	@echo "======================================================================"
 
-# --- System Status ---
-sitrep:
-	@docker-compose exec backend python app/db/sitrep.py || echo "⚠️  Backend container might be down"
+# --- STAGE 1: BUILD ---
+build:
+	@echo "[CI] Building Docker Images..."
+	docker-compose build
 
-
-# --- Docker Control ---
+# --- STAGE 2: ENVIRONMENT ---
 up:
+	@echo "[CI] Starting Ephemeral Environment..."
 	docker-compose up -d
 
 down:
+	@echo "[CI] Tearing Down Environment..."
 	docker-compose down
 
-build:
-	docker-compose up -d --build
+# --- STAGE 3: LINT ---
+lint:
+	@echo "[CI] Running Static Analysis..."
+	@$(BACKEND_CMD) flake8 .
+	@cd $(FRONTEND_DIR) && npm run lint
+
+# --- STAGE 4: UNIT TESTS ---
+unit-tests:
+	@echo "[CI] Running Unit Tests..."
+	@$(BACKEND_CMD) pytest tests --ignore=tests/integration
+	@cd $(FRONTEND_DIR) && npm run test
+
+# --- STAGE 5: INTEGRATION TESTS ---
+integration-tests:
+	@echo "[CI] Running Integration Tests..."
+	@$(BACKEND_CMD) pytest tests/integration
+
+# --- STAGE 6: E2E TESTS ---
+test-e2e:
+	@echo "[CI] Running E2E Tests..."
+	@cd $(FRONTEND_DIR) && npx playwright test
+
+# --- Utilities & Composed ---
+format:
+	@echo "Formatting Code..."
+	@$(BACKEND_CMD) black .
+	@$(BACKEND_CMD) isort .
+
+test-all: unit-tests integration-tests test-e2e
+	@echo "All Tests Passed"
 
 logs:
-	docker-compose logs -f
+	docker-compose logs -f -n 100
 
-# --- Data Management ---
-seed-demo-users:
-	@echo "Seeding All Demo Users..."
-	docker-compose exec backend python app/db/demo_data.py seed
+sitrep:
+	@$(BACKEND_CMD) python app/db/sitrep.py || echo "Backend container might be down"
 
-seed-gyms:
-	@echo "Seeding Demo Gyms..."
-	docker-compose exec backend python app/db/demo_data.py seed-gyms
-
-seed-trainers:
-	@echo "Seeding Demo Trainers..."
-	docker-compose exec backend python app/db/demo_data.py seed-trainers
-
-clean-demo-users:
-	@echo "Cleaning All Demo Users..."
-	docker-compose exec backend python app/db/demo_data.py clean
-
-clean-gyms:
-	@echo "Cleaning Demo Gyms..."
-	docker-compose exec backend python app/db/demo_data.py clean-gyms
-
-clean-trainers:
-	@echo "Cleaning Demo Trainers..."
-	docker-compose exec backend python app/db/demo_data.py clean-trainers
-
-# --- Testing ---
-test-backend:
-	docker-compose exec -e PYTHONPATH=. backend pytest tests
-
-test-e2e:
-	@echo "Running E2E Tests..."
-	cd frontend && npx playwright test
-
-# --- Utilities ---
 shell-backend:
-	docker-compose exec backend /bin/bash
+	$(BACKEND_SHELL) /bin/bash
 
 db-shell:
-	docker-compose exec db psql -U postgres -d app
+	docker-compose exec db psql -U postgres -d gym_saas
 
-format:
-	docker-compose exec backend black .
-	docker-compose exec backend isort .
-
-# --- Admin CLI ---
-# Usage: make admin cmd="list-gyms"
-# Usage: make admin cmd="create-gym --name 'My Gym' ..."
 admin:
-	@docker-compose exec backend python app/cli.py $(cmd)
+	@$(BACKEND_CMD) python app/cli.py $(cmd)
 
-# --- CI/CD ---
-test-all: test-backend test-e2e
-	@echo "All tests passed!"
+# --- Data Helpers ---
+seed-demo-users:
+	@echo "Seeding Static Demo Users..."
+	@$(BACKEND_CMD) python app/db/demo_data.py seed
 
-# --- Full Lifecycle ---
-# Usage: make all
-all: down build
-	@echo "Waiting for services to stabilize..."
+clean-demo-users:
+	@echo "Cleaning Demo Users..."
+	@$(BACKEND_CMD) python app/db/demo_data.py clean
+
+# --- Specific Workflows ---
+
+ci-pipeline: build up
+	@echo "Starting Full CI Pipeline..."
+	@echo "Waiting for services..."
+	@sleep 10
+	@$(MAKE) lint
+	@$(MAKE) test-all
+	@$(MAKE) down
+	@echo "CI Pipeline Complete - Artifacts Verified."
+
+investor-demo-setup: down build up
+	@echo "Waiting for services..."
 	@sleep 10
 	@$(MAKE) seed-demo-users
+	@echo "Seeding Investor Analytics..."
+	@$(BACKEND_CMD) python app/db/demo_data.py seed-analytics
+	@echo "Investor Demo Ready: http://localhost:3000"
+
+prod-all: down build up
+	@echo "Starting Production Readiness Check..."
+	@echo "Waiting for services..."
+	@sleep 10
+	@$(MAKE) lint
 	@$(MAKE) test-all
+	@$(MAKE) seed-demo-users
 	@$(MAKE) sitrep
-	@echo "==================================================="
-	@echo "Application Ready & Verified"
-	@echo "==================================================="
-	@echo "📱 Frontend: http://localhost:3000"
-	@echo "🔌 API Docs: http://localhost:8000/docs"
-	@echo "==================================================="
+	@echo "Production Ready"
+
+dev-all: down build up
+	@echo "Starting Development Environment..."
+	@echo "Waiting for services..."
+	@sleep 10
+	@$(MAKE) format
+	@$(MAKE) lint
+	@$(MAKE) test-all
+	@$(MAKE) seed-demo-users
+	@echo "Dev Ready. Attaching logs..."
+	@$(MAKE) logs
+
+# Alias
+all: prod-all

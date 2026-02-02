@@ -96,3 +96,49 @@ def reject_trainer(
     session.add(trainer)
     session.commit()
     return {"status": "rejected"}
+
+@router.get("/overview", response_model=Any)
+def read_admin_analytics(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_admin),
+):
+    from app.models.booking import Booking
+    from sqlalchemy import func, desc
+
+    # Metrics
+    total_users = session.exec(select(func.count(User.id))).one()
+    total_gyms = session.exec(select(func.count(Gym.id))).one()
+    total_trainers = session.exec(select(func.count(Trainer.id))).one()
+    total_bookings = session.exec(select(func.count(Booking.id))).one()
+
+    # Top Gyms
+    top_gyms_query = (
+        select(Gym.name, func.count(Booking.id).label("booking_count"))
+        .join(Booking, Gym.id == Booking.gym_id)
+        .group_by(Gym.id)
+        .order_by(desc("booking_count"))
+        .limit(5)
+    )
+    top_gyms = session.exec(top_gyms_query).all()
+
+    # Top Trainers
+    top_trainers_query = (
+        select(User.full_name, func.count(Booking.id).label("booking_count"))
+        .join(Trainer, User.id == Trainer.user_id) # Join User to get name
+        .join(Booking, Trainer.id == Booking.trainer_id)
+        .group_by(User.id, Trainer.id)
+        .order_by(desc("booking_count"))
+        .limit(5)
+    )
+    top_trainers = session.exec(top_trainers_query).all()
+
+    return {
+        "metrics": {
+            "total_users": total_users,
+            "total_gyms": total_gyms,
+            "total_trainers": total_trainers,
+            "total_bookings": total_bookings
+        },
+        "top_gyms": [{"name": r[0], "count": r[1]} for r in top_gyms],
+        "top_trainers": [{"name": r[0], "count": r[1]} for r in top_trainers]
+    }
