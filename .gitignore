@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 node_modules/
 .pnp
@@ -9,18 +7,12 @@ node_modules/
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-venv/
-.venv/
-env/
-
-# Python
-__pycache__/
-*.pyc
 
 # testing
 coverage/
 playwright-report/
 test-results/
+.nyc_output
 
 # next.js
 .next/
@@ -29,28 +21,6 @@ out/
 # production
 build/
 dist/
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env
-.env*
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
 
 # python
 __pycache__/
@@ -61,7 +31,11 @@ __pycache__/
 venv/
 ENV/
 env/
+
+# env files
 .env
+.env*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -76,8 +50,29 @@ yarn-error.log*
 
 # system
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+.classpath
 
 # legacy/unwanted
 drizzle/
 migrations/
+*.sql
+backend/app/api/api_v1/endpoints/bookings.py
+/files1.txt
+/files2.txt
+/branch1_files.txt
+/branch2_files.txt
+/tmp_simulation_output.txt
