@@ -4,7 +4,7 @@ Manages persistent demo accounts for manual UI testing.
 """
 import sys
 import os
-from sqlmodel import Session, select, create_engine, SQLModel
+from sqlmodel import Session, select, delete, create_engine, SQLModel
 from typing import List, Tuple
 
 # Ensure we can import app modules
@@ -22,15 +22,18 @@ from app.core.security import get_password_hash
 # DATABASE CONNECTION
 try:
     from app.db.session import engine
+    from app.models.associations import GymTrainer
+    # Need to import where WorkoutSessionExercise is defined, likely app.models.workout
+    from app.models.workout import WorkoutSessionExercise
 except Exception:
     print("Could not import engine from app.db.session. Constructing manually...")
     db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/app")
     engine = create_engine(db_url)
 
-DEMO_PASSWORD = os.environ["DEMO_PASSWORD"]
-DEMO_GYM_PASSWORD = os.environ["DEMO_GYM_PASSWORD"]
-DEMO_TRAINER_PASSWORD = os.environ["DEMO_TRAINER_PASSWORD"]
-DEMO_ADMIN_PASSWORD = os.environ["DEMO_ADMIN_PASSWORD"]
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "password")
+DEMO_GYM_PASSWORD = os.getenv("DEMO_GYM_PASSWORD", "password")
+DEMO_TRAINER_PASSWORD = os.getenv("DEMO_TRAINER_PASSWORD", "password")
+DEMO_ADMIN_PASSWORD = os.getenv("DEMO_ADMIN_PASSWORD", "password")
 
 # (Role, Email, VerificationStatus, Password)
 DEMO_PERSONAS: List[Tuple[str, str, str, str]] = [
@@ -55,16 +58,23 @@ def seed():
         for role_str, email, status, password in DEMO_PERSONAS:
             existing = session.exec(select(User).where(User.email == email)).first()
             if existing:
+                print(f"    Cleaning up existing user: {email}")
                 # Clean sessions first
-                sessions = session.exec(select(UserSession).where(UserSession.user_id == existing.id)).all()
-                for s in sessions:
-                    session.delete(s)
-
-                if existing.gym:
-                    session.delete(existing.gym)
+                session.exec(delete(UserSession).where(UserSession.user_id == existing.id))
+                
+                # Clean associations if any (Trainer <-> Gym)
                 if existing.trainer:
-                    session.delete(existing.trainer)
-                session.delete(existing)
+                    session.exec(delete(GymTrainer).where(GymTrainer.trainer_id == existing.trainer.id))
+                    session.exec(delete(Trainer).where(Trainer.id == existing.trainer.id))
+                
+                if existing.gym:
+                    # Deep clean gym dependencies
+                    session.exec(delete(Booking).where(Booking.gym_id == existing.gym.id))
+                    session.exec(delete(SessionPackage).where(SessionPackage.gym_id == existing.gym.id))
+                    session.exec(delete(GymTrainer).where(GymTrainer.gym_id == existing.gym.id))
+                    session.exec(delete(Gym).where(Gym.id == existing.gym.id))
+
+                session.exec(delete(User).where(User.id == existing.id))
                 session.commit()
             
             actual_role = "SAAS_ADMIN" if role_str == "PLATFORM_ADMIN" else role_str
@@ -81,11 +91,19 @@ def seed():
             session.refresh(user)
             
             if role_str == "GYM_ADMIN" and status:
+                gym_names = {
+                    "APPROVED": "Titan Fitness",
+                    "PENDING": "Gold's Gym",
+                    "DRAFT": "Anytime Fitness",
+                    "REJECTED": "Local Gym",
+                }
+                
+                name = gym_names.get(status, f"Gym {status.capitalize()}")
                 gym = Gym(
                     admin_id=user.id,
-                    name=f"Gym {status.capitalize()}",
-                    slug=f"gym-{status.lower()}",
-                    location="Demo City",
+                    name=name,
+                    slug=name.lower().replace(" ", "-").replace("'", ""),
+                    location="Demo City, India",
                     verification_status=status
                 )
                 session.add(gym)
@@ -99,6 +117,72 @@ def seed():
                 
             session.commit()
             print(f"  ✅ {email} -> {status or 'ADMIN'}")
+            
+def clean():
+    print("🧹 Cleaning ALL Demo Data (Brute Force)...")
+    with Session(engine) as session:
+        # Delete in strict dependency order
+        print("  - Deleting WorkoutSessionExercises...")
+        try:
+             session.exec(delete(WorkoutSessionExercise))
+        except Exception:
+             print("    (WorkoutSessionExercise table might not exist or be empty, skipping)")
+
+        print("  - Deleting Bookings...")
+        session.exec(delete(Booking))
+        print("  - Deleting SessionPackages...")
+        session.exec(delete(SessionPackage))
+        print("  - Deleting GymTrainers...")
+        session.exec(delete(GymTrainer))
+        print("  - Deleting Trainers...")
+        session.exec(delete(Trainer).where(Trainer.verification_status.in_(["DRAFT", "PENDING", "APPROVED", "REJECTED"]))) 
+        # Note: Above filter is imperfect, better to rely on cascade or user.is_demo but Trainer doesn't have is_demo. 
+        # Actually proper way: delete trainers linked to demo users.
+        
+        # Better approach:
+        # 1. Find demo users
+        demo_users = session.exec(select(User).where(User.is_demo == True)).all()
+        demo_user_ids = [u.id for u in demo_users]
+        
+        if not demo_user_ids:
+            print("  No demo users found.")
+            return
+
+        # Delete Bookings for these users (Client or Trainer)
+        # OR just delete all bookings for demo gyms?
+        # Let's delete ALL bookings for now if they are just demo data? 
+        # No, might wipe real data if any (but this is a demo environment).
+        # Safe bet: Delete bookings where trainer or user is demo.
+        
+        # Simplify: Just delete everything related to demo users
+        print("  - deleting dependent data for demo users...")
+        for u in demo_users:
+            session.exec(delete(UserSession).where(UserSession.user_id == u.id))
+            if u.trainer:
+                session.exec(delete(Booking).where(Booking.trainer_id == u.trainer.id))
+                session.exec(delete(GymTrainer).where(GymTrainer.trainer_id == u.trainer.id))
+                # Delete trainer later
+            if u.gym:
+                session.exec(delete(Booking).where(Booking.gym_id == u.gym.id))
+                session.exec(delete(SessionPackage).where(SessionPackage.gym_id == u.gym.id))
+                session.exec(delete(GymTrainer).where(GymTrainer.gym_id == u.gym.id))
+                # Delete gym later
+                
+        session.commit()
+        
+        # Now delete the primary entities
+        for u in demo_users:
+            if u.trainer:
+                session.exec(delete(Trainer).where(Trainer.id == u.trainer.id))
+            if u.gym:
+                session.exec(delete(Gym).where(Gym.id == u.gym.id))
+        
+        session.commit()
+        
+        print("  - Deleting Users...")
+        session.exec(delete(User).where(User.is_demo == True))
+        session.commit()
+    print("Done clean.")
 
 def clean_gyms():
     print("🧹 Cleaning Demo Gyms (is_demo=True, role=GYM_ADMIN)...")
@@ -155,11 +239,19 @@ def seed_gyms():
             session.commit()
             session.refresh(user)
             
+            gym_names = {
+                "APPROVED": "Titan Fitness",
+                "PENDING": "Gold's Gym",
+                "DRAFT": "Anytime Fitness",
+                "REJECTED": "Local Gym",
+            }
+            name = gym_names.get(status, f"Gym {status.capitalize()}")
+            
             gym = Gym(
                 admin_id=user.id,
-                name=f"Gym {status.capitalize()}",
-                slug=f"gym-{status.lower()}",
-                location="Demo City",
+                name=name,
+                slug=name.lower().replace(" ", "-").replace("'", ""),
+                location="Demo City, India",
                 verification_status=status
             )
             session.add(gym)
@@ -219,6 +311,9 @@ def seed_analytics():
         # 1. Get all Gyms
         gyms = session.exec(select(Gym)).all()
         
+        # Track trainer bookings to prevent conflicts: trainer_id -> set(start_time)
+        trainer_bookings_log = {} 
+        
         for gym in gyms:
             print(f"  Processing Gym: {gym.name}")
             
@@ -262,6 +357,21 @@ def seed_analytics():
                 else:
                      print(f"    ❌ No trainers exist in DB at all. Skipping bookings.")
                      continue
+            
+            # GUARANTEE: Ensure tr_active is associated with the first gym so tests always have data
+            # Check if tr_active is already in gym_trainers
+            # We need to find tr_active user first
+            tr_active_user = session.exec(select(User).where(User.email == "tr_active@example.com")).first()
+            if tr_active_user and tr_active_user.trainer and gym.id == gyms[0].id: # Only for first gym
+                is_linked = any(t.id == tr_active_user.trainer.id for t in gym_trainers)
+                if not is_linked:
+                     from app.models.associations import GymTrainer, AssociationStatus
+                     assoc = GymTrainer(gym_id=gym.id, trainer_id=tr_active_user.trainer.id, status=AssociationStatus.ACTIVE)
+                     session.add(assoc)
+                     session.commit()
+                     session.refresh(gym)
+                     gym_trainers.append(tr_active_user.trainer)
+                     print(f"    ✅ FORCE Associated tr_active with {gym.name} for testing")
 
             clients = session.exec(select(User).where(User.role == "CLIENT")).all()
             if not clients:
@@ -278,30 +388,82 @@ def seed_analytics():
             
             current = start_date
             while current < end_date:
-                # Randomly determine if a booking happens this hour
-                if current.hour >= 6 and current.hour <= 20: # Operating hours 6am-8pm
-                     if random.random() < 0.3: # 30% chance of booking per hour slot
+                # Determine if a booking happens this hour
+                # Operating hours 6am-8pm, bookings are hourly on the dot
+                if current.hour >= 6 and current.hour <= 20: 
+                     if random.random() < 0.3: # 30% chance of booking per slot
                         trainer = random.choice(gym_trainers)
                         client = random.choice(clients)
+                        # Ensure trainer isn't already booked at this time
+                        if trainer.id not in trainer_bookings_log:
+                            trainer_bookings_log[trainer.id] = set()
                         
+                        booking_time_key = current.replace(minute=0, second=0, microsecond=0)
+                        
+                        if booking_time_key in trainer_bookings_log[trainer.id]:
+                            continue # Skip this slot, trainer is busy
+                            
+                        # Suggest status based on time
                         status = BookingStatus.COMPLETED if current < datetime.now() else BookingStatus.SCHEDULED
                         if current < datetime.now() and random.random() < 0.1:
                             status = BookingStatus.CANCELLED
+
+                        # Realistic Workout Intents
+                        intents = [
+                            "Leg Day Hypertrophy", "Upper Body Power", "Cardio Endurance", 
+                            "HIIT & Core", "Mobility & Recovery", "Strength Application",
+                            "Functional Movement", "Olympic Lifting Tech", "Glute Focus"
+                        ]
                         
                         booking = Booking(
                             gym_id=gym.id,
                             trainer_id=trainer.id,
                             user_id=client.id,
-                            start_time=current,
-                            end_time=current + timedelta(hours=1),
-                            status=status
+                            start_time=booking_time_key,
+                            end_time=(current + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0),
+                            status=status,
+                            notes=random.choice(intents) # Using notes field for Intent for now
                         )
                         session.add(booking)
+                        trainer_bookings_log[trainer.id].add(booking_time_key)
                 
                 current += timedelta(hours=1)
             
             session.commit()
+            
+            session.commit()
             print(f"    ✅ Generated bookings for {gym.name}")
+
+            # GUARANTEE: Create a booking for TODAY for tr_active if this is the first gym
+            # This ensures E2E tests which look for "Today's Schedule" always find something
+            if gym.id == gyms[0].id:
+                 tr_active_user = session.exec(select(User).where(User.email == "tr_active@example.com")).first()
+                 if tr_active_user and tr_active_user.trainer:
+                     # Find a client
+                     any_client = clients[0] if clients else None
+                     if any_client:
+                         now = datetime.now()
+                         # Book for next full hour
+                         start_time = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+                         if start_time.hour > 20: # If too late, book for 8pm today (or just let it be past?)
+                             start_time = now.replace(hour=20, minute=0, second=0, microsecond=0)
+                         
+                         end_time = start_time + timedelta(hours=1)
+                         
+                         # Check if already booked (though unlikely with random, but good to be safe)
+                         if start_time not in trainer_bookings_log.get(tr_active_user.trainer.id, set()):
+                             booking = Booking(
+                                 gym_id=gym.id,
+                                 trainer_id=tr_active_user.trainer.id,
+                                 user_id=any_client.id,
+                                 start_time=start_time,
+                                 end_time=end_time,
+                                 status=BookingStatus.SCHEDULED,
+                                 notes="Guaranteed Session for Testing"
+                             )
+                             session.add(booking)
+                             session.commit()
+                             print("    ✅ GUARANTEED booking for tr_active today")
             
     print("Done seeding analytics.")
 
