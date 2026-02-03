@@ -24,7 +24,7 @@ try:
     from app.db.session import engine
     from app.models.associations import GymTrainer
     # Need to import where WorkoutSessionExercise is defined, likely app.models.workout
-    from app.models.workout import WorkoutSessionExercise
+    from app.models.workout import WorkoutSessionExercise, Exercise, ExerciseType, MeasurementUnit
 except Exception:
     print("Could not import engine from app.db.session. Constructing manually...")
     db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/app")
@@ -410,9 +410,8 @@ def seed_analytics():
 
                         # Realistic Workout Intents
                         intents = [
-                            "Leg Day Hypertrophy", "Upper Body Power", "Cardio Endurance", 
-                            "HIIT & Core", "Mobility & Recovery", "Strength Application",
-                            "Functional Movement", "Olympic Lifting Tech", "Glute Focus"
+                            "Legs", "Chest", "Shoulder and Core", 
+                            "HIIT", "Cardio", "Back and Biceps"
                         ]
                         
                         booking = Booking(
@@ -431,8 +430,80 @@ def seed_analytics():
             
             session.commit()
             
+            # --- Generate Workout Data (Progressive Overload) ---
+            generated_wse_count = 0
+            # Retrieve all bookings just added via query (since we committed)
+            # We filter by gym_id and date range we just processed
+            start_date_q = datetime.now() - timedelta(days=180 + 1)
+            end_date_q = datetime.now() + timedelta(days=14 + 1)
+            
+            gym_bookings = session.exec(select(Booking).where(
+                Booking.gym_id == gym.id, 
+                Booking.status == BookingStatus.COMPLETED,
+                Booking.start_time >= start_date_q
+            )).all()
+            
+            intent_map = {
+                "Legs": ["Squat", "Leg Press", "Lunges", "RDL", "Leg Extension", "Calf Raise"],
+                "Chest": ["Bench Press", "Incline DB Press", "Cable Fly", "Pushups", "Dips"],
+                "Back and Biceps": ["Pullups", "Lat Pulldown", "DB Row", "Barbell Curl", "Hammer Curl"],
+                "Shoulder and Core": ["OHP", "Lateral Raise", "Front Raise", "Plank", "Russian Twist"],
+                "HIIT": ["Burpees", "Box Jumps", "Kettlebell Swings", "Battle Ropes"],
+                "Cardio": ["Treadmill Run", "Rowing", "Cycling", "Jump Rope"]
+            }
+
+            for booking in gym_bookings:
+                if not booking.notes: continue
+                
+                relevant_exercises = intent_map.get(booking.notes, [])
+                if not relevant_exercises: continue
+
+                # Calculate "Weeks Ago" for progression
+                weeks_since_start = (booking.start_time.date() - (datetime.now() - timedelta(days=180)).date()).days // 7
+                progression_factor = max(0, weeks_since_start) 
+
+                for ex_name in relevant_exercises:
+                    exercise = session.exec(select(Exercise).where(Exercise.name == ex_name)).first()
+                    if exercise:
+                        sets = 3
+                        reps = 10
+                        weight = None
+                        duration = None
+                        
+                        if exercise.unit_type == MeasurementUnit.WEIGHT_REPS:
+                            base_weight = 40.0 
+                            weight = base_weight + (progression_factor * 2.5) 
+                            weight += random.choice([-2.5, 0, 2.5])
+                            
+                        elif exercise.unit_type == MeasurementUnit.REPS_ONLY:
+                            base_reps = 10
+                            reps = base_reps + progression_factor
+                            
+                        elif exercise.unit_type == MeasurementUnit.TIME_ONLY:
+                            base_time = 30 
+                            duration = base_time + (progression_factor * 5)
+                            
+                        elif exercise.unit_type == MeasurementUnit.TIME_DISTANCE:
+                             duration = 600 + (progression_factor * 30) 
+                             # distance logic...
+                        
+                        # Check existance to avoid dupes if re-running
+                        # existing_wse = session.exec(select(WorkoutSessionExercise).where(WorkoutSessionExercise.booking_id == booking.id, WorkoutSessionExercise.exercise_id == exercise.id)).first()
+                        # if not existing_wse:
+                        wse = WorkoutSessionExercise(
+                            booking_id=booking.id,
+                            exercise_id=exercise.id,
+                            sets=sets,
+                            reps=reps,
+                            weight_kg=weight,
+                            duration_seconds=duration,
+                            notes="Generated"
+                        )
+                        session.add(wse)
+                        generated_wse_count += 1
+            
             session.commit()
-            print(f"    ✅ Generated bookings for {gym.name}")
+            print(f"    ✅ Generated {generated_wse_count} workout logs for {gym.name}")
 
             # GUARANTEE: Create a booking for TODAY for tr_active if this is the first gym
             # This ensures E2E tests which look for "Today's Schedule" always find something
@@ -462,10 +533,68 @@ def seed_analytics():
                                  notes="Guaranteed Session for Testing"
                              )
                              session.add(booking)
-                             session.commit()
-                             print("    ✅ GUARANTEED booking for tr_active today")
-            
-    print("Done seeding analytics.")
+
+
+def seed_exercises(session: Session):
+    print("Seeding Exercise Library...")
+    SQLModel.metadata.create_all(engine)
+    
+    exercises_data = {
+        "Legs": [
+            ("Squat", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Leg Press", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Lunges", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("RDL", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Leg Extension", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Calf Raise", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Goblet Squat", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+        ],
+        "Chest": [
+            ("Bench Press", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Incline DB Press", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Cable Fly", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Pushups", ExerciseType.STRENGTH, MeasurementUnit.REPS_ONLY),
+            ("Dips", ExerciseType.STRENGTH, MeasurementUnit.REPS_ONLY),
+        ],
+        "Back and Biceps": [
+            ("Pullups", ExerciseType.STRENGTH, MeasurementUnit.REPS_ONLY),
+            ("Lat Pulldown", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("DB Row", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Barbell Curl", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Hammer Curl", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+        ],
+        "Shoulder and Core": [
+            ("OHP", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Lateral Raise", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Front Raise", ExerciseType.STRENGTH, MeasurementUnit.WEIGHT_REPS),
+            ("Plank", ExerciseType.STRENGTH, MeasurementUnit.TIME_ONLY),
+            ("Russian Twist", ExerciseType.STRENGTH, MeasurementUnit.REPS_ONLY),
+        ],
+        "HIIT": [
+            ("Burpees", ExerciseType.HIIT, MeasurementUnit.REPS_ONLY),
+            ("Box Jumps", ExerciseType.HIIT, MeasurementUnit.REPS_ONLY),
+            ("Kettlebell Swings", ExerciseType.HIIT, MeasurementUnit.WEIGHT_REPS),
+            ("Battle Ropes", ExerciseType.HIIT, MeasurementUnit.TIME_ONLY),
+        ],
+        "Cardio": [
+            ("Treadmill Run", ExerciseType.CARDIO, MeasurementUnit.TIME_DISTANCE),
+            ("Rowing", ExerciseType.CARDIO, MeasurementUnit.TIME_DISTANCE),
+            ("Cycling", ExerciseType.CARDIO, MeasurementUnit.TIME_DISTANCE),
+            ("Jump Rope", ExerciseType.CARDIO, MeasurementUnit.TIME_ONLY),
+        ]
+    }
+
+    created_count = 0
+    for category, exercises in exercises_data.items():
+        for name, ex_type, unit in exercises:
+            existing = session.exec(select(Exercise).where(Exercise.name == name)).first()
+            if not existing:
+                ex = Exercise(name=name, category=ex_type, unit_type=unit)
+                session.add(ex)
+                created_count += 1
+    
+    session.commit()
+    print(f"✅ Created {created_count} exercises.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -486,6 +615,8 @@ if __name__ == "__main__":
     elif cmd == "clean-trainers":
         clean_trainers()
     elif cmd == "seed-analytics":
+        with Session(engine) as session:
+            seed_exercises(session)
         seed_analytics()
     else:
         print(f"Unknown command: {cmd}")

@@ -7,10 +7,23 @@ import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { User, Calendar, Star, DollarSign, Clock, Award } from "lucide-react";
 
+import { useRef, useEffect, useState } from "react";
+import { TrainerTodayView } from "./trainer-today-view";
+import { api } from "@/lib/api";
+
 export function TrainerDashboard() {
     const { user, profile, logout } = useAuth();
     const router = useRouter();
     const status = profile?.verification_status || "NONE";
+    const [sessions, setSessions] = useState([]);
+
+    useEffect(() => {
+        if (profile?.id) {
+            api.trainers.get(`${profile.id}/bookings`)
+                .then(data => setSessions(data))
+                .catch(err => console.error("Failed to load sessions", err));
+        }
+    }, [profile?.id]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -158,17 +171,13 @@ export function TrainerDashboard() {
             </Card>
 
             {/* Upcoming Sessions */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Clock className="w-5 h-5" />
-                        Upcoming Sessions
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">No upcoming sessions</p>
-                </CardContent>
-            </Card>
+            <TrainerTodayView sessions={sessions.filter((s: any) => {
+                const sDate = new Date(s.start_time);
+                const today = new Date();
+                return sDate.getDate() === today.getDate() &&
+                    sDate.getMonth() === today.getMonth() &&
+                    sDate.getFullYear() === today.getFullYear();
+            })} />
         </div>
     );
 }

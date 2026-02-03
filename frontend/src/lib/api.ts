@@ -21,6 +21,37 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
 }
 
 export const api = {
+    // Generic methods
+    get: async (endpoint: string, token?: string | null) => {
+        const headers: any = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`${API_URL}${endpoint}`, { headers });
+        if (!res.ok) throw new Error("API Error");
+        return res.json();
+    },
+    post: async (endpoint: string, data: any, token?: string | null) => {
+        const headers: any = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error("API Error");
+        return res.json();
+    },
+    patch: async (endpoint: string, data: any, token?: string | null) => {
+        const headers: any = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`${API_URL}${endpoint}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error("API Error");
+        return res.json();
+    },
+    // Domain specific
     auth: {
         register: (data: any) => fetcher('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
         login: async (data: any) => {
@@ -42,6 +73,7 @@ export const api = {
         list: () => fetcher('/trainers/'),
         create: (data: any) => fetcher('/trainers/', { method: 'POST', body: JSON.stringify(data) }),
         get: (id: string) => fetcher(`/trainers/${id}`),
+        getSession: (trainerId: string, sessionId: string) => fetcher(`/trainers/${trainerId}/sessions/${sessionId}`),
     },
     users: {
         me: () => fetcher('/users/me'),

@@ -195,6 +195,106 @@ def read_trainer_bookings(
             "client": {
                 "name": client.full_name,
                 "email": client.email
-            }
+            },
+            "notes": booking.notes
         })
     return results
+
+@router.get("/{trainer_id}/sessions/{session_id}", response_model=Any)
+def read_trainer_session_detail(
+    trainer_id: int,
+    session_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    trainer = session.get(Trainer, trainer_id)
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+    if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
+         raise HTTPException(status_code=403, detail="Not authorized")
+
+    from app.models.booking import Booking
+    from app.models.gym import Gym
+    from app.models.user import User as UserModel
+    from app.models.workout import WorkoutSessionExercise, Exercise
+
+    # Fetch booking with Gym and Client
+    result = session.exec(
+        select(Booking, Gym, UserModel)
+        .join(Gym, Booking.gym_id == Gym.id)
+        .join(UserModel, Booking.user_id == UserModel.id)
+        .where(Booking.id == session_id)
+        .where(Booking.trainer_id == trainer_id)
+    ).first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    booking, gym, client = result
+
+    # Fetch exercises
+    exercises = session.exec(
+        select(WorkoutSessionExercise, Exercise)
+        .join(Exercise, WorkoutSessionExercise.exercise_id == Exercise.id)
+        .where(WorkoutSessionExercise.booking_id == session_id)
+    ).all()
+
+    formatted_exercises = []
+    for workout_exercise, exercise_def in exercises:
+        formatted_exercises.append({
+            "id": workout_exercise.id,
+            "name": exercise_def.name,
+            "sets": workout_exercise.sets,
+            "reps": workout_exercise.reps,
+            "weight_kg": workout_exercise.weight_kg,
+            "notes": workout_exercise.notes
+        })
+
+    return {
+        "id": booking.id,
+        "start_time": booking.start_time,
+        "end_time": booking.end_time,
+        "status": booking.status,
+        "notes": booking.notes,
+        "gym": {
+            "name": gym.name,
+            "location": gym.location,
+            "id": gym.id
+        },
+        "client": {
+            "id": client.id,
+            "name": client.full_name,
+            "email": client.email,
+            "photo_url": getattr(client, "photo_url", None) # Safe access
+        },
+        "exercises": formatted_exercises
+    }
+
+@router.patch("/{trainer_id}/sessions/{session_id}/status", response_model=Any)
+def update_session_status(
+    trainer_id: int,
+    session_id: int,
+    status_update: dict, # expect {"status": "COMPLETED" | "NO_SHOW"}
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    trainer = session.get(Trainer, trainer_id)
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+    if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
+         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    from app.models.booking import Booking, BookingStatus
+    
+    booking = session.get(Booking, session_id)
+    if not booking or booking.trainer_id != trainer_id:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    new_status = status_update.get("status")
+    if new_status:
+        booking.status = new_status
+        session.add(booking)
+        session.commit()
+        session.refresh(booking)
+        
+    return booking
