@@ -59,11 +59,14 @@ Access the application at: [http://localhost:3000](http://localhost:3000)
 Standardized via `Makefile`:
 
 ```bash
-# Start Environment (Dev Mode with Hot Reload)
-make dev-all
+# Start Environment (Full Build & Up)
+make up
+
+# Run Unit Tests (Backend & Frontend)
+make unit-tests
 
 # Run All Tests (Unit + Integration + E2E)
-make test-all
+make test
 
 # View System Status (Sitrep)
 make sitrep
