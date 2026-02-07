@@ -2,7 +2,8 @@ from fastapi import APIRouter
 
 from app.api.api_v1.endpoints import (admin, auth, bookings, exercises,
                                       gym_analytics, gyms, templates,
-                                      test_utils, trainers, users)
+                                      test_utils, trainers, users,
+                                      certificates, gym_applications, workouts)
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -18,3 +19,6 @@ api_router.include_router(exercises.router, prefix="/exercises", tags=["exercise
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(gym_analytics.router, prefix="/gyms", tags=["analytics"])
 api_router.include_router(test_utils.router, prefix="/test-utils", tags=["test-utils"])
+api_router.include_router(certificates.router, prefix="/certificates", tags=["certificates"])
+api_router.include_router(gym_applications.router, prefix="/gym-applications", tags=["gym-applications"])
+api_router.include_router(workouts.router, prefix="/workouts", tags=["workouts"])

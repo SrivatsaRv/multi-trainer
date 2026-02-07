@@ -1,15 +1,35 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { User, Mail, Award, Star, Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { User, Mail, Award, Star, Loader2, Plus, Trash2, Building, MapPin } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+const POPULAR_SPECIALIZATIONS = [
+    "Weightlifting", "Yoga", "HIIT", "Nutrition", "Pilates",
+    "CrossFit", "Calisthenics", "Rehabilitation", "Senior Fitness", "Boxing"
+];
+
+const POPULAR_CERTS = [
+    "ACE CPT", "NASM CPT", "ISSA CPT", "Precision Nutrition L1", "CrossFit L1"
+];
 
 export default function TrainerProfilePage() {
     const { user, profile: contextProfile } = useAuth();
@@ -18,40 +38,38 @@ export default function TrainerProfilePage() {
     const [localProfile, setLocalProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    // Data States
     const [trainerGyms, setTrainerGyms] = useState<any[]>([]);
     const [allGyms, setAllGyms] = useState<any[]>([]);
+    const [certificates, setCertificates] = useState<any[]>([]);
+    const [applications, setApplications] = useState<any[]>([]);
+
+    // UI States
     const [showJoinFlow, setShowJoinFlow] = useState(false);
     const [applying, setApplying] = useState<number | null>(null);
-
     const [isEditingSpecs, setIsEditingSpecs] = useState(false);
-    const [isEditingCerts, setIsEditingCerts] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-    const saveProfile = async (updates: any) => {
-        setSaving(true);
-        try {
-            await api.trainers.patch(params.trainerId as string, updates);
-            setLastSaved(new Date());
-            toast.success("Profile updated");
-        } catch (err) {
-            toast.error("Failed to save changes");
-        } finally {
-            setSaving(false);
-        }
-    };
+    // Certificate Form
+    const [isCertDialogOpen, setIsCertDialogOpen] = useState(false);
+    const [newCert, setNewCert] = useState({ name: "", issuing_organization: "", issue_date: "" });
+    const [addingCert, setAddingCert] = useState(false);
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [prof, gyms, all] = await Promise.all([
+                const [prof, gyms, all, certs, apps] = await Promise.all([
                     api.trainers.get(params.trainerId as string),
                     api.trainers.getGyms(params.trainerId as string),
-                    api.gyms.listAll()
+                    api.gyms.listAll(),
+                    api.certificates.list(),
+                    api.gymApplications.list()
                 ]);
                 setLocalProfile(prof);
                 setTrainerGyms(gyms);
                 setAllGyms(all);
+                setCertificates(certs);
+                setApplications(apps);
             } catch (err) {
                 console.error("Failed to fetch profile data:", err);
             } finally {
@@ -61,40 +79,116 @@ export default function TrainerProfilePage() {
         if (params.trainerId) fetchData();
     }, [params.trainerId]);
 
+    const saveProfile = async (updates: any) => {
+        setSaving(true);
+        try {
+            await api.trainers.patch(params.trainerId as string, updates);
+            setLocalProfile((prev: any) => ({ ...prev, ...updates }));
+            toast.success("Profile updated");
+        } catch (err) {
+            toast.error("Failed to save changes");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleApply = async (gymId: number) => {
         setApplying(gymId);
         try {
-            await api.trainers.applyToGym(params.trainerId as string, gymId);
-            const updatedGyms = await api.trainers.getGyms(params.trainerId as string);
-            setTrainerGyms(updatedGyms);
-            toast.success("Application sent!");
-        } catch (err) {
-            toast.error("Failed to send application");
+            // Check max 3 gyms limit locally first
+            const activeGyms = trainerGyms.filter(g => g.status === 'ACTIVE');
+            if (activeGyms.length >= 3) {
+                toast.error("You can only join up to 3 gyms.");
+                return;
+            }
+
+            // Use new Application API
+            await api.gymApplications.create(gymId, "I would like to join your gym as a trainer.");
+
+            // Refresh applications list
+            const apps = await api.gymApplications.list();
+            setApplications(apps);
+            toast.success("Application sent! Waiting for approval.");
+        } catch (err: any) {
+            // Extract error message if possible
+            const msg = err.message || "Failed to send application";
+            toast.error(msg);
         } finally {
             setApplying(null);
         }
     };
 
+    const handleAddCertificate = async () => {
+        if (!newCert.name || !newCert.issuing_organization || !newCert.issue_date) {
+            toast.error("Please fill in all required fields");
+            return;
+        }
+        setAddingCert(true);
+        try {
+            const created = await api.certificates.create(newCert);
+            setCertificates([...certificates, created]);
+            setIsCertDialogOpen(false);
+            setNewCert({ name: "", issuing_organization: "", issue_date: "" });
+            toast.success("Certificate added");
+        } catch (err) {
+            toast.error("Failed to add certificate");
+        } finally {
+            setAddingCert(false);
+        }
+    };
+
+    const handleDeleteCertificate = async (id: number) => {
+        try {
+            await api.certificates.delete(id);
+            setCertificates(certificates.filter(c => c.id !== id));
+            toast.success("Certificate removed");
+        } catch (err) {
+            toast.error("Failed to remove certificate");
+        }
+    };
+
+    const toggleSpecialization = (spec: string) => {
+        const current = localProfile?.specializations || [];
+        let updated;
+        if (current.includes(spec)) {
+            updated = current.filter((s: string) => s !== spec);
+        } else {
+            if (current.length >= 5) {
+                toast.error("Maximum 5 specializations allowed");
+                return;
+            }
+            updated = [...current, spec];
+        }
+        saveProfile({ specializations: updated });
+    };
+
     const profile = localProfile || contextProfile;
 
-    if (!user || (loading && !profile)) return <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>;
+    if (!user || (loading && !profile)) return <div className="flex justify-center p-12 min-h-[50vh] items-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     if (!profile) return <div className="p-8 text-center text-muted-foreground">Profile not found.</div>;
 
     const isAssociatedWith = (gymId: number) => trainerGyms.some(tg => tg.gym.id === gymId);
+    const getApplicationStatus = (gymId: number) => applications.find(a => a.gym_id === gymId)?.status;
 
     return (
-        <div className="space-y-6 pb-20">
-            <div className="flex justify-between items-center">
+        <div className="space-y-6 pb-24 md:pb-10 max-w-lg mx-auto md:max-w-none">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">My Profile</h1>
-                    <p className="text-muted-foreground">Manage your public trainer profile</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Trainer Profile</h1>
+                    <p className="text-muted-foreground">Your digital business card & qualifications</p>
                 </div>
-                <Button variant="outline" onClick={() => router.push(`/dashboard/trainer/${params.trainerId}/profile/edit`)}>
-                    Edit Profile
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                        {profile.verification_status}
+                    </Badge>
+                </div>
             </div>
 
+            {/* Main Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                {/* 1. Personal Info Card */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -103,187 +197,277 @@ export default function TrainerProfilePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-                            <div className="text-lg font-semibold">{user.full_name}</div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-muted-foreground">Email</label>
-                            <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-muted-foreground" />
-                                {user.email}
+                        <div className="flex items-center gap-4">
+                            <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold border-2 border-white shadow-sm">
+                                {user.full_name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-lg">{user.full_name}</h3>
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <Mail className="w-3 h-3" />
+                                    {user.email}
+                                </div>
                             </div>
                         </div>
+
                         <div>
-                            <label className="text-sm font-medium text-muted-foreground">Bio</label>
-                            <p className="text-sm">{profile.bio || "No bio added."}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'}>
-                                {profile.verification_status}
-                            </Badge>
+                            <Label htmlFor="bio">Bio</Label>
+                            <Input
+                                id="bio"
+                                className="mt-1.5"
+                                defaultValue={profile.bio}
+                                placeholder="Tell clients about yourself..."
+                                onBlur={(e) => {
+                                    if (e.target.value !== profile.bio) saveProfile({ bio: e.target.value });
+                                }}
+                            />
                         </div>
                     </CardContent>
                 </Card>
 
+                {/* 2. Specializations Card */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="flex items-center gap-2">
                             <Star className="w-5 h-5 text-amber-500" />
                             Specializations
                         </CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditingSpecs(!isEditingSpecs)}>
-                            {isEditingSpecs ? "Done" : "Edit"}
-                        </Button>
+                        <span className="text-xs text-muted-foreground">
+                            {(profile.specializations?.length || 0)}/5
+                        </span>
                     </CardHeader>
                     <CardContent>
-                        {isEditingSpecs ? (
-                            <div className="space-y-4">
-                                <p className="text-xs text-muted-foreground">Type tags separated by commas to update.</p>
-                                <Input
-                                    defaultValue={profile.specializations?.join(", ")}
-                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                        const specs = e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean);
-                                        if (JSON.stringify(specs) !== JSON.stringify(profile.specializations)) {
-                                            saveProfile({ specializations: specs });
-                                            setLocalProfile({ ...profile, specializations: specs });
-                                        }
-                                    }}
-                                    placeholder="Weightlifting, Yoga, Nutrition..."
-                                />
-                                {saving && <p className="text-xs text-primary animate-pulse flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Saving changes...</p>}
-                            </div>
-                        ) : (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {profile.specializations?.map((spec: string) => (
+                                <Badge key={spec} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                                    {spec}
+                                    <button
+                                        onClick={() => toggleSpecialization(spec)}
+                                        className="hover:bg-slate-200 rounded-full p-0.5"
+                                    >
+                                        <Trash2 className="w-3 h-3 text-muted-foreground" />
+                                    </button>
+                                </Badge>
+                            ))}
+                            {(!profile.specializations?.length) && <span className="text-sm text-muted-foreground italic">Select up to 5 skills below</span>}
+                        </div>
+
+                        <div className="border-t pt-4">
+                            <p className="text-xs font-medium text-muted-foreground mb-3">Add Specialization:</p>
                             <div className="flex flex-wrap gap-2">
-                                {profile.specializations?.map((spec: string, i: number) => (
-                                    <Badge key={i} variant="outline" className="text-sm py-1 px-3">
-                                        {spec}
-                                    </Badge>
+                                {POPULAR_SPECIALIZATIONS.filter(s => !profile.specializations?.includes(s)).map(spec => (
+                                    <button
+                                        key={spec}
+                                        onClick={() => toggleSpecialization(spec)}
+                                        className="text-xs border rounded-full px-3 py-1 hover:bg-primary/5 hover:border-primary transition-colors"
+                                    >
+                                        + {spec}
+                                    </button>
                                 ))}
-                                {(!profile.specializations || profile.specializations.length === 0) && (
-                                    <p className="text-muted-foreground text-sm">No specializations linked.</p>
-                                )}
                             </div>
-                        )}
+                        </div>
                     </CardContent>
                 </Card>
 
+                {/* 3. Certifications Card */}
                 <Card className="col-span-full">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="flex items-center gap-2">
                             <Award className="w-5 h-5 text-emerald-500" />
                             Certifications
                         </CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditingCerts(!isEditingCerts)}>
-                            {isEditingCerts ? "Done" : "Edit"}
-                        </Button>
+                        <Dialog open={isCertDialogOpen} onOpenChange={setIsCertDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="gap-1">
+                                    <Plus className="w-4 h-4" /> Add
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Add Certificate</DialogTitle>
+                                    <DialogDescription>
+                                        Verify your expertise with official certifications.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Common Certifications</Label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {POPULAR_CERTS.map(c => (
+                                                <Badge
+                                                    key={c}
+                                                    variant="outline"
+                                                    className="cursor-pointer hover:bg-slate-100"
+                                                    onClick={() => setNewCert({ ...newCert, name: c })}
+                                                >
+                                                    {c}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="certName">Certificate Name</Label>
+                                        <Input
+                                            id="certName"
+                                            value={newCert.name}
+                                            onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
+                                            placeholder="e.g. Advanced Personal Trainer"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="org">Organization</Label>
+                                            <Input
+                                                id="org"
+                                                value={newCert.issuing_organization}
+                                                onChange={(e) => setNewCert({ ...newCert, issuing_organization: e.target.value })}
+                                                placeholder="e.g. ACE"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="date">Issue Date</Label>
+                                            <Input
+                                                id="date"
+                                                type="date"
+                                                value={newCert.issue_date}
+                                                onChange={(e) => setNewCert({ ...newCert, issue_date: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleAddCertificate} disabled={addingCert}>
+                                        {addingCert && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Save Certificate
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </CardHeader>
                     <CardContent>
-                        {isEditingCerts ? (
-                            <div className="space-y-4">
-                                <p className="text-xs text-muted-foreground">Update your professional certifications.</p>
-                                <Input
-                                    defaultValue={profile.certifications?.map((c: any) => typeof c === 'string' ? c : c.name).join(", ")}
-                                    onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                                        const certs = e.target.value.split(",").map((c: string) => c.trim()).filter(Boolean);
-                                        // Simple string array for now as per previous logic
-                                        if (JSON.stringify(certs) !== JSON.stringify(profile.certifications)) {
-                                            saveProfile({ certifications: certs });
-                                            setLocalProfile({ ...profile, certifications: certs });
-                                        }
-                                    }}
-                                    placeholder="ACE CPT, Precision Nutrition L1..."
-                                />
-                                {saving && <p className="text-xs text-primary animate-pulse flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Saving changes...</p>}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {profile.certifications?.map((cert: any, i: number) => (
-                                    <div key={i} className="flex flex-col p-3 rounded-lg border bg-muted/30">
-                                        <span className="font-semibold">{typeof cert === 'string' ? cert : cert.name}</span>
-                                        <span className="text-sm text-muted-foreground">{typeof cert === 'object' ? `Certified in ${cert.year}` : 'Verified'}</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {certificates.map((cert) => (
+                                <div key={cert.id} className="flex justify-between items-start p-3 rounded-lg border bg-slate-50 dark:bg-zinc-900">
+                                    <div>
+                                        <p className="font-semibold text-sm">{cert.name}</p>
+                                        <p className="text-xs text-muted-foreground">{cert.issuing_organization} • {new Date(cert.issue_date).getFullYear()}</p>
                                     </div>
-                                ))}
-                                {(!profile.certifications || profile.certifications.length === 0) && (
-                                    <p className="text-muted-foreground text-sm">No certifications added.</p>
-                                )}
-                            </div>
-                        )}
+                                    <button
+                                        onClick={() => handleDeleteCertificate(cert.id)}
+                                        className="text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {certificates.length === 0 && (
+                                <div className="col-span-full text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+                                    No certifications added yet.
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card className="col-span-full border-primary/20 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <div>
-                            <CardTitle className="text-2xl font-bold">Gym Discovery & Partnerships</CardTitle>
-                            <p className="text-sm text-muted-foreground mt-1">Manage your facility associations and discover new places to train.</p>
+                {/* 4. Gym Discovery */}
+                <Card className="col-span-full border-primary/20 shadow-sm overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-xl">Gym Associations</CardTitle>
+                                <p className="text-sm text-muted-foreground">Join up to 3 gyms to start training clients.</p>
+                            </div>
+                            <Button
+                                variant={showJoinFlow ? "secondary" : "default"}
+                                onClick={() => setShowJoinFlow(!showJoinFlow)}
+                                size="sm"
+                            >
+                                {showJoinFlow ? "View My Gyms" : "Join a Gym"}
+                            </Button>
                         </div>
-                        <Button
-                            variant={showJoinFlow ? "outline" : "default"}
-                            onClick={() => setShowJoinFlow(!showJoinFlow)}
-                            className="transition-all"
-                        >
-                            {showJoinFlow ? "Back to My Gyms" : "Find a Gym to Join"}
-                        </Button>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-6">
                         {!showJoinFlow ? (
                             <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">Your profile is currently linked to these facilities.</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {trainerGyms.map((tg, i) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 border rounded-lg bg-muted/20">
-                                            <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center font-bold text-primary">
-                                                {tg.gym.name.substring(0, 1)}
+                                    {trainerGyms.map((tg) => (
+                                        <div key={tg.id} className="flex items-center gap-3 p-4 border rounded-xl bg-card shadow-sm">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                                                <Building className="w-5 h-5" />
                                             </div>
-                                            <div className="flex-1 overflow-hidden">
+                                            <div className="flex-1 min-w-0">
                                                 <div className="font-medium truncate">{tg.gym.name}</div>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] py-0">
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
                                                         {tg.status}
                                                     </Badge>
-                                                    {tg.status === 'ACTIVE' && i === 0 && (
-                                                        <Badge variant="outline" className="text-[10px] py-0 border-emerald-500 text-emerald-500">PRIMARY</Badge>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
                                     {trainerGyms.length === 0 && (
-                                        <div className="col-span-full p-8 border border-dashed rounded-lg text-center">
-                                            <p className="text-muted-foreground text-sm mb-4">You haven&apos;t joined any gyms yet.</p>
-                                            <Button variant="outline" onClick={() => setShowJoinFlow(true)}>Find a Gym to Join</Button>
+                                        <div className="col-span-full text-center py-12">
+                                            <p className="text-muted-foreground mb-4">You are not associated with any gym.</p>
+                                            <Button onClick={() => setShowJoinFlow(true)}>Browse Gyms</Button>
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Pending Applications Section */}
+                                {applications.length > 0 && (
+                                    <div className="mt-8">
+                                        <h4 className="text-sm font-semibold mb-3">Pending Applications</h4>
+                                        <div className="space-y-2">
+                                            {applications.map(app => {
+                                                const gym = allGyms.find(g => g.id === app.gym_id);
+                                                if (!gym || app.status !== 'PENDING') return null;
+                                                return (
+                                                    <div key={app.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+                                                        <div className="flex items-center gap-3">
+                                                            <ClockLoader className="w-4 h-4 text-orange-500" />
+                                                            <span className="text-sm font-medium">{gym.name}</span>
+                                                        </div>
+                                                        <Badge variant="outline" className="text-orange-600 border-orange-200">Pending Approval</Badge>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">Select a gym to send an association request.</p>
+                                <Input placeholder="Search gyms..." className="max-w-md" />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {allGyms.filter(g => !isAssociatedWith(g.id)).map((gym) => (
-                                        <div key={gym.id} className="flex flex-col p-4 border rounded-lg bg-background hover:border-primary/50 transition-colors">
-                                            <div className="flex items-center gap-3 mb-4">
-                                                <div className="h-10 w-10 rounded bg-zinc-100 flex items-center justify-center font-bold text-zinc-900">
-                                                    {gym.name.substring(0, 1)}
+                                    {allGyms.filter(g => !isAssociatedWith(g.id)).map((gym) => {
+                                        const appStatus = getApplicationStatus(gym.id);
+                                        const isPending = appStatus === 'PENDING';
+
+                                        return (
+                                            <div key={gym.id} className="flex flex-col p-4 border rounded-xl bg-card hover:shadow-md transition-shadow">
+                                                <div className="flex items-start justify-between mb-4">
+                                                    <div className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                                        <span className="font-bold text-lg">{gym.name[0]}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className="font-medium truncate">{gym.name}</div>
-                                                    <div className="text-xs text-muted-foreground truncate">{gym.location}</div>
+                                                <div className="mb-4">
+                                                    <h3 className="font-semibold truncate">{gym.name}</h3>
+                                                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                                        <MapPin className="w-3 h-3 mr-1" />
+                                                        {gym.location}
+                                                    </div>
                                                 </div>
+                                                <Button
+                                                    className="w-full mt-auto"
+                                                    variant={isPending ? "secondary" : "default"}
+                                                    disabled={isPending || applying === gym.id}
+                                                    onClick={() => !isPending && handleApply(gym.id)}
+                                                >
+                                                    {isPending ? "Pending" : (applying === gym.id ? "Applying..." : "Apply to Join")}
+                                                </Button>
                                             </div>
-                                            <Button
-                                                className="w-full mt-auto"
-                                                variant="secondary"
-                                                size="sm"
-                                                disabled={applying === gym.id}
-                                                onClick={() => handleApply(gym.id)}
-                                            >
-                                                {applying === gym.id ? "Applying..." : "Apply to Join"}
-                                            </Button>
-                                        </div>
-                                    ))}
-                                    {allGyms.length === 0 && <p className="text-center py-8 text-muted-foreground">No gyms found near you.</p>}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -292,4 +476,24 @@ export default function TrainerProfilePage() {
             </div>
         </div>
     );
+}
+
+function ClockLoader({ className }: { className?: string }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+        >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+        </svg>
+    )
 }

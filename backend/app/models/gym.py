@@ -10,6 +10,7 @@ from app.models.associations import GymTrainer
 if TYPE_CHECKING:
     from app.models.trainer import Trainer
     from app.models.user import User
+    from app.models.gym_application import GymApplication
 
 
 class VerificationStatus(str, Enum):
@@ -65,3 +66,4 @@ class Gym(GymBase, table=True):
         link_model=GymTrainer,
         sa_relationship_kwargs={"cascade": "all"},
     )
+    trainer_applications: List["GymApplication"] = Relationship(back_populates="gym")

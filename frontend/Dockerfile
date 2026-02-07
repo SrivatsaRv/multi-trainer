@@ -1,53 +1,45 @@
+# Stage 1: Base
 FROM node:20-alpine AS base
+ENV NEXT_TELEMETRY_DISABLED 1
+WORKDIR /app
 
-# Install dependencies only when needed
+# Stage 2: Dependencies
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
-
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
+# Stage 3: Development target
+# Used for local development with hot-reload via volumes
+FROM base AS development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV NODE_ENV development
+CMD ["npm", "run", "dev"]
 
-# Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-ENV NEXT_TELEMETRY_DISABLED 1
-
-# Accept build arguments for public env vars
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
+# Stage 4: Builder
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# Build the application using standalone mode
 RUN npm run build
 
-# Production image, copy all the files and run next
-# Production image, copy all the files and run next
+# Stage 5: Runner
 FROM base AS runner
-WORKDIR /app
-
 ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
+# Only copy what's absolutely necessary for standalone mode
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-
-# Copy build output
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

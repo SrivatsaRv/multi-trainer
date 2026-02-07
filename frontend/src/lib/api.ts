@@ -2,11 +2,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1
 
 export async function fetcher(endpoint: string, options: RequestInit = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const headers = {
+    const headers: any = {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers,
     };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         ...options,
@@ -14,11 +16,22 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
     });
 
     if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
+        // Try to parse error message
+        let errorMsg = response.statusText;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.detail || errorMsg;
+        } catch (e) {
+            // ignore
+        }
+        throw new Error(errorMsg);
     }
 
     return response.json();
 }
+
+const fetchWithAuth = fetcher;
+
 
 export const api = {
     // Generic methods
@@ -91,6 +104,11 @@ export const api = {
         applyToGym: (trainerId: string, gymId: number) => fetcher(`/trainers/${trainerId}/gyms/${gymId}/apply`, { method: 'POST' }),
         getSession: (trainerId: string, sessionId: string) => fetcher(`/trainers/${trainerId}/sessions/${sessionId}`),
         getExerciseHistory: (trainerId: string, exerciseId: number, clientId: number) => fetcher(`/trainers/${trainerId}/exercises/${exerciseId}/history?client_id=${clientId}`),
+        getClients: (trainerId: string) => fetcher(`/trainers/${trainerId}/clients`),
+        addClient: (trainerId: string, data: any) => fetcher(`/trainers/${trainerId}/clients/onboard`, { method: 'POST', body: JSON.stringify(data) }),
+        getClient: (trainerId: string, clientId: string) => fetcher(`/trainers/${trainerId}/clients/${clientId}`),
+        getClientAnalytics: (trainerId: string, clientId: string) => fetcher(`/trainers/${trainerId}/clients/${clientId}/analytics/overview`),
+        getBookings: (trainerId: string) => fetcher(`/trainers/${trainerId}/bookings`),
     },
     bookings: {
         updateStatus: (trainerId: string, bookingId: string, status: string) => fetcher(`/bookings/${bookingId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
@@ -109,5 +127,24 @@ export const api = {
         rejectGym: (id: number) => fetcher(`/admin/verifications/gym/${id}/reject`, { method: 'POST' }),
         approveTrainer: (id: number) => fetcher(`/admin/verifications/trainer/${id}/approve`, { method: 'POST' }),
         rejectTrainer: (id: number) => fetcher(`/admin/verifications/trainer/${id}/reject`, { method: 'POST' }),
+    },
+    certificates: {
+        list: () => fetchWithAuth(`/certificates`),
+        create: (data: any) => fetchWithAuth(`/certificates`, { method: 'POST', body: JSON.stringify(data) }),
+        update: (id: number, data: any) => fetchWithAuth(`/certificates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        delete: (id: number) => fetchWithAuth(`/certificates/${id}`, { method: 'DELETE' }),
+    },
+    gymApplications: {
+        list: () => fetchWithAuth(`/gym-applications`),
+        create: (gymId: number, message?: string) => fetchWithAuth(`/gym-applications`, { method: 'POST', body: JSON.stringify({ gym_id: gymId, message }) }),
+        cancel: (id: number) => fetchWithAuth(`/gym-applications/${id}`, { method: 'DELETE' }),
+    },
+    workouts: {
+        getTemplates: () => fetchWithAuth(`/workouts/templates`),
+        createTemplate: (data: any) => fetchWithAuth(`/workouts/templates`, { method: 'POST', body: JSON.stringify(data) }),
+        updateTemplate: (id: number, data: any) => fetchWithAuth(`/workouts/templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+        deleteTemplate: (id: number) => fetchWithAuth(`/workouts/templates/${id}`, { method: 'DELETE' }),
+        getLogs: (clientId?: number) => fetchWithAuth(`/workouts/logs${clientId ? `?client_id=${clientId}` : ''}`),
+        createLog: (data: any) => fetchWithAuth(`/workouts/logs`, { method: 'POST', body: JSON.stringify(data) }),
     }
 };

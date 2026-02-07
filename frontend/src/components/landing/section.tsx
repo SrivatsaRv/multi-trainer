@@ -13,7 +13,7 @@ export function LandingSection({ id, className, children, fullHeight = true }: L
         <section
             id={id}
             className={cn(
-                "flex flex-col items-center justify-center px-6 py-24 sm:py-32 lg:px-12 2xl:px-24",
+                "flex flex-col items-center justify-center py-24 sm:py-32",
                 fullHeight && "min-h-screen",
                 className
             )}

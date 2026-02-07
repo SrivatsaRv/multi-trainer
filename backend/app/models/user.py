@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from app.models.gym import Gym
     from app.models.trainer import Trainer
+    from app.models.workout_log import WorkoutLog
 
 
 class UserRole(str, Enum):
@@ -31,6 +32,7 @@ class User(UserBase, table=True):
     # Relationships
     gym: Optional["Gym"] = Relationship(back_populates="admin")
     trainer: Optional["Trainer"] = Relationship(back_populates="user")
+    workout_logs: List["WorkoutLog"] = Relationship(back_populates="client")
 
 
 class UserCreate(BaseModel):

@@ -37,10 +37,12 @@ export function AppHeader() {
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background">
-            <div className="container flex h-16 items-center justify-between">
-                <Link href="/" className="flex items-center space-x-2">
-                    <Dumbbell className="h-6 w-6" />
-                    <span className="font-bold">Workout Tracker</span>
+            <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+                <Link href="/" className="flex items-center gap-2 font-bold focus-visible:outline-none">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background">
+                        M
+                    </div>
+                    <span className="text-xl text-foreground">MultiTrainer</span>
                 </Link>
                 {!isAuthPage && (
                     <div className="flex items-center space-x-2">

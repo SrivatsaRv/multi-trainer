@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: runner
     container_name: gym-saas-backend
     ports:
       - "8000:8000"
@@ -20,6 +21,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: development
     container_name: gym-saas-frontend
     ports:
       - "3000:3000"

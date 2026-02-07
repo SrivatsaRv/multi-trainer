@@ -86,9 +86,12 @@ class WorkoutSet(SQLModel, table=True):
 
 class WorkoutTemplate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)  # e.g. "Legs", "Chest"
+    name: str = Field(index=True)
     description: Optional[str] = None
-    # No user_id/trainer_id -> Global Template
+    trainer_id: Optional[int] = Field(default=None, foreign_key="trainer.id")
+    
+    # Relationships
+    workout_template_exercises: List["WorkoutTemplateExercise"] = Relationship(back_populates="template")
 
 
 class WorkoutTemplateExercise(SQLModel, table=True):
@@ -99,3 +102,7 @@ class WorkoutTemplateExercise(SQLModel, table=True):
     sets: int = Field(default=3)
     reps: Optional[int] = Field(default=10)
     notes: Optional[str] = None
+
+    # Relationships
+    template: WorkoutTemplate = Relationship(back_populates="workout_template_exercises")
+    exercise: Exercise = Relationship()

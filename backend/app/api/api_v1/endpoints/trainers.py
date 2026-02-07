@@ -44,9 +44,14 @@ def create_trainer(
         select(Trainer).where(Trainer.user_id == current_user.id)
     ).first()
     if existing_trainer:
-        raise HTTPException(
-            status_code=400, detail="User already has a trainer profile"
-        )
+        # Idempotent approach: Update the existing profile with new data
+        trainer_data = trainer_in.model_dump(exclude_unset=True)
+        for key, value in trainer_data.items():
+            setattr(existing_trainer, key, value)
+        session.add(existing_trainer)
+        session.commit()
+        session.refresh(existing_trainer)
+        return existing_trainer
 
     db_obj = Trainer(**trainer_in.model_dump(), user_id=current_user.id)
     session.add(db_obj)

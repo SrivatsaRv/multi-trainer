@@ -5,8 +5,8 @@ import { Zap, ChevronDown } from "lucide-react";
 export function LandingHero() {
     return (
         <section id="hero" className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center lg:px-12 2xl:px-24">
-            <div className="relative z-10 text-center px-4 max-w-5xl mx-auto mt-20 md:mt-32">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-4 py-1.5 text-xs font-bold text-muted-foreground backdrop-blur-sm">
+            <div className="relative z-10 text-center px-4 max-w-5xl mx-auto mt-24 md:mt-32">
+                <div className="inline-flex items-center gap-2 rounded-full border bg-muted/80 px-4 py-1.5 text-xs font-bold text-muted-foreground backdrop-blur-md shadow-sm">
                     <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
