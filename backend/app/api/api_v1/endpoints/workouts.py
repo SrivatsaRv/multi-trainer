@@ -33,6 +33,8 @@ class WorkoutTemplateUpdateSchema(BaseModel):
     description: Optional[str] = None
     exercises: Optional[List[dict]] = None
 
+router = APIRouter()
+
 @router.get("/templates", response_model=List[WorkoutTemplate])
 def read_templates(
     session: Session = Depends(get_session),

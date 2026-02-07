@@ -1,7 +1,10 @@
 from enum import Enum
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.trainer import Trainer
 
 
 class ExerciseType(str, Enum):
@@ -91,6 +94,7 @@ class WorkoutTemplate(SQLModel, table=True):
     trainer_id: Optional[int] = Field(default=None, foreign_key="trainer.id")
     
     # Relationships
+    trainer: Optional["Trainer"] = Relationship(back_populates="workout_templates")
     workout_template_exercises: List["WorkoutTemplateExercise"] = Relationship(back_populates="template")
 
 
