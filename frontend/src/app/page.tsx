@@ -27,6 +27,7 @@ export default function Home() {
         ctaText="Start onboarding your facility"
         ctaLink="/auth/register?role=GYM_ADMIN"
         previewLabel="Gym Dashboard Preview"
+        imageSrc="/dashboard_preview.png"
       />
 
       <FeatureSection
@@ -43,6 +44,7 @@ export default function Home() {
         ctaLink="/auth/register?role=TRAINER"
         previewLabel="Trainer Marketplace Preview"
         reversed
+        imageSrc="/dashboard_preview.png"
       />
     </div>
   );

@@ -5,30 +5,32 @@ import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogOut, User, Dumbbell } from "lucide-react";
 import { useEffect, useState } from "react";
+import { decodeToken, getAuthToken, clearAuthToken } from "@/lib/session";
+import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
     const router = useRouter();
     const pathname = usePathname();
+    const { logout } = useAuth();
     const [user, setUser] = useState<{ email: string } | null>(null);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = getAuthToken();
         if (token) {
-            // Decode JWT to get user info (simple base64 decode)
             try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                // Fetch user details if needed, for now just show logged in state
+                const payload = decodeToken(token);
                 setUser({ email: "User" });
             } catch (e) {
-                localStorage.removeItem("token");
+                clearAuthToken();
+                setUser(null);
             }
+        } else {
+            setUser(null);
         }
     }, [pathname]);
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        setUser(null);
-        router.push("/auth/login");
+        logout();
     };
 
     const isAuthPage = pathname?.startsWith("/auth");

@@ -57,7 +57,10 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
 
             if (response.access_token) {
                 toast.success("Registration successful!");
-                await login(response.access_token);
+                const rolePath = values.role === "TRAINER" ? "trainer" : "gym";
+                // We bypass the AuthContext.login redirect for onboarding flow
+                setAuthToken(response.access_token);
+                window.location.href = `/auth/onboarding/${rolePath}`;
             }
         } catch (error: any) {
             console.error(error);

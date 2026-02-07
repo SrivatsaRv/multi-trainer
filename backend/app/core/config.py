@@ -1,13 +1,15 @@
-from typing import List, Union
-from pydantic import field_validator, ConfigDict
+from typing import List
+
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
-    model_config = ConfigDict(case_sensitive=True, env_file=".env")
-    
+    model_config = ConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
+
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Multi-Trainer Gym SaaS"
-    
+
     # CORS
     BACKEND_CORS_ORIGINS: str = ""
 
@@ -20,5 +22,6 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+
 
 settings = Settings()

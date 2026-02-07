@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProfile(null);
     setToken(null);
-    router.push("/auth/login");
+    window.location.href = "/auth/login";
   };
 
   const login = async (newToken: string, newUser?: User) => {

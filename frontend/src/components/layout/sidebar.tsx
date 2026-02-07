@@ -66,9 +66,14 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
                 icon: Calendar,
             },
             {
+                title: "Clients",
+                href: `/dashboard/trainer/${trainerId}/clients`,
+                icon: Users,
+            },
+            {
                 title: "Sessions",
                 href: `/dashboard/trainer/${trainerId}/sessions`,
-                icon: Users,
+                icon: Clock,
             },
             {
                 title: "Availability",
@@ -83,7 +88,7 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
             {
                 title: "Profile",
                 href: `/dashboard/trainer/${trainerId}/profile`,
-                icon: Users,
+                icon: Settings,
             },
         ];
     } else if (user?.role === "SAAS_ADMIN") {

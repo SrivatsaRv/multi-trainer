@@ -1,146 +1,89 @@
-"""
-Situation Report Script
-Shows system health and database statistics.
-"""
-import sys
 import os
-import requests
-from sqlmodel import Session, select, func, create_engine, text
+import sys
 from datetime import datetime
 
+import requests
+from sqlmodel import Session, create_engine, func, select
+
+# Add current directory to path for imports
 sys.path.append(os.getcwd())
 
-from app.models.user import User
-from app.models.gym import Gym
-from app.models.trainer import Trainer
-from app.models.session import UserSession
+from app.models.booking import Booking, SessionPackage  # noqa: E402
+from app.models.gym import Gym  # noqa: E402
+from app.models.session import UserSession  # noqa: E402
+from app.models.subscription import ClientSubscription  # noqa: E402
+from app.models.trainer import Trainer  # noqa: E402
+from app.models.user import User  # noqa: E402
+
+# Situation Report Script
+# Shows system health and database statistics.
 
 # Create engine without echo to suppress SQL logs
 try:
-    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/app")
-    engine = create_engine(db_url, echo=False)
-except Exception as e:
-    print(f"Failed to create engine: {e}")
-    sys.exit(1)
+    from app.core.config import settings  # noqa: E402
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+    DATABASE_URL = settings.DATABASE_URL
+except ImportError:
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./multi_trainer.db")
 
-def check_api_health():
-    """Check main API health endpoint."""
+engine = create_engine(DATABASE_URL, echo=False)
+
+
+def get_db_stats():
+    with Session(engine) as session:
+        stats = {
+            "users": session.exec(select(func.count(User.id))).one(),
+            "gyms": session.exec(select(func.count(Gym.id))).one(),
+            "trainers": session.exec(select(func.count(Trainer.id))).one(),
+            "bookings": session.exec(select(func.count(Booking.id))).one(),
+            "active_sessions": session.exec(
+                select(func.count(UserSession.id)).where(
+                    UserSession.is_active.is_(True)
+                )
+            ).one(),
+            "active_subscriptions": (
+                session.exec(
+                    select(func.count(ClientSubscription.id)).where(
+                        ClientSubscription.is_active.is_(True)
+                    )
+                ).one()
+                if hasattr(ClientSubscription, "is_active")
+                else 0
+            ),
+            "packages": session.exec(select(func.count(SessionPackage.id))).one(),
+        }
+        return stats
+
+
+def check_health():
     try:
-        resp = requests.get(f"{API_URL}/health", timeout=3)
-        return "OK" if resp.status_code == 200 else f"HTTP {resp.status_code}"
-    except Exception as e:
-        return f"UNREACHABLE"
-
-def get_counts(session, model):
-    """Get total count for a model."""
-    return session.exec(select(func.count()).select_from(model)).one()
-
-def get_status_distribution(session, model):
-    """Get verification status distribution."""
-    stmt = select(model.verification_status, func.count()).group_by(model.verification_status)
-    results = session.exec(stmt).all()
-    return {status: count for status, count in results}
-
-def get_session_stats(session):
-    """Get session statistics."""
-    total_sessions = session.exec(select(func.count()).select_from(UserSession)).one()
-    active_sessions = session.exec(
-        select(func.count()).select_from(UserSession).where(UserSession.is_active == True)
-    ).one()
-    expired_sessions = session.exec(
-        select(func.count()).select_from(UserSession).where(
-            UserSession.expires_at < datetime.utcnow(),
-            UserSession.is_active == True
+        response = requests.get(
+            "http://localhost:8000/health", timeout=2
         )
-    ).one()
-    
-    return {
-        'total': total_sessions,
-        'active': active_sessions,
-        'expired': expired_sessions
-    }
+        return response.status_code == 200
+    except Exception:
+        return False
 
-def get_active_sessions(session):
-    """Get list of active sessions with user info."""
-    stmt = select(UserSession, User).join(User).where(
-        UserSession.is_active == True,
-        UserSession.expires_at > datetime.utcnow()
-    )
-    results = session.exec(stmt).all()
-    return results
 
-def run_sitrep():
-    print("\n" + "="*60)
-    print("SYSTEM SITREP")
-    print("="*60 + "\n")
-    
-    # API Health
-    print("API Health:")
-    print(f"  /health -> {check_api_health()}\n")
-    
-    # Database Stats
-    with Session(engine) as session:
-        user_total = get_counts(session, User)
-        gym_total = get_counts(session, Gym)
-        trainer_total = get_counts(session, Trainer)
-        
-        print("Database Statistics:")
-        print(f"  Users:    {user_total}")
-        print(f"  Gyms:     {gym_total}")
-        print(f"  Trainers: {trainer_total}\n")
-        
-    # Database Size & Table Stats
+def main():
+    print("=" * 40)
+    print(f"SITUATION REPORT - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 40)
+
+    print("\n[DB STATISTICS]")
     try:
-        # DB Size
-        db_size = session.exec(select(func.pg_size_pretty(func.pg_database_size(func.current_database())))).one()
-        print(f"Database Size: {db_size}\n")
-        
-        # Table Row Counts (using information_schema for approximate or explicit counts)
-        # Getting all table names in public schema
-        # Use text() for system catalog queries efficiently
-        tables_query = text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'")
-        tables = session.exec(tables_query).all()
-        
-        print("Table Row Counts:")
-        for row in tables:
-            table = row[0] # Extract table name from tuple/row
-            try:
-                # Use raw SQL for dynamic table counting
-                # Quote table name to handle reserved keywords like "user"
-                cnt = session.exec(text(f'SELECT count(*) FROM "{table}"')).one()[0]
-                print(f"  {table:25s} : {cnt}")
-            except Exception as e:
-                # print(f"  Error counting {table}: {e}")
-                pass
-        print()
-        
+        stats = get_db_stats()
+        for key, val in stats.items():
+            print(f"- {key.replace('_', ' ').title()}: {val}")
     except Exception as e:
-        print(f"Could not fetch detailed DB stats: {e}")
+        print(f"Error fetching DB stats: {e}")
 
-    # Session Statistics
-    with Session(engine) as session:
-        # Re-using session context for stats
-        
-        # Session Statistics
-        session_stats = get_session_stats(session)
-        print("Session Statistics:")
-        print(f"  Total Sessions:   {session_stats['total']}")
-        print(f"  Active Sessions:  {session_stats['active']}")
-        print(f"  Expired (stale):  {session_stats['expired']}\n")
-        
-        # Active Sessions Detail
-        active_sessions = get_active_sessions(session)
-        if active_sessions:
-            print("Active Sessions (Time Remaining):")
-            for user_session, user in active_sessions:
-                # Time tracking is based on explicit 'expires_at' timestamp stored in DB
-                time_left = (user_session.expires_at - datetime.utcnow()).total_seconds() / 3600
-                print(f"  {user.email:30s} - {time_left:.1f}h remaining (Expires: {user_session.expires_at} UTC)")
-            print()
-            
-    print("\n" + "="*60 + "\n")
+    print("\n[SERVICES HEALTH]")
+    health = "ONLINE" if check_health() else "OFFLINE (or port 8000 blocked)"
+    print(f"- Backend API: {health}")
+
+    print("\n" + "=" * 40)
+
 
 if __name__ == "__main__":
-    run_sitrep()
+    main()

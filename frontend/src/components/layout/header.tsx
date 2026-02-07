@@ -48,16 +48,31 @@ export function Header() {
                 </nav>
 
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" asChild className="text-sm">
-                        <Link href="/auth/login">
-                            Log in
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/auth/register">
-                            Get Started
-                        </Link>
-                    </Button>
+                    {isLoggedIn ? (
+                        <>
+                            <Button variant="ghost" asChild className="text-sm">
+                                <Link href="/dashboard">
+                                    Dashboard
+                                </Link>
+                            </Button>
+                            <Button onClick={handleLogout} variant="outline" className="text-sm">
+                                Logout
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="ghost" asChild className="text-sm">
+                                <Link href="/auth/login">
+                                    Log in
+                                </Link>
+                            </Button>
+                            <Button asChild>
+                                <Link href="/auth/register">
+                                    Get Started
+                                </Link>
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         </header>

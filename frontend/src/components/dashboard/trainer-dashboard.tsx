@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import { User, Calendar, Star, DollarSign, Clock, Award } from "lucide-react";
+import { User, Calendar, Star, DollarSign, Clock, Award, Package, TrendingUp } from "lucide-react";
 
 import { useRef, useEffect, useState } from "react";
 import { TrainerTodayView } from "./trainer-today-view";
@@ -86,7 +86,7 @@ export function TrainerDashboard() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">$0</div>
+                        <div className="text-2xl font-bold">₹0</div>
                         <p className="text-sm text-muted-foreground">This month</p>
                     </CardContent>
                 </Card>
@@ -166,6 +166,37 @@ export function TrainerDashboard() {
                         >
                             Trainer Analytics
                         </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Grey-out Policy: Personalized Plans */}
+            <Card className="opacity-60 pointer-events-none">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                            <Package className="w-5 h-5" />
+                            Personalized Plans
+                        </CardTitle>
+                        <Badge variant="secondary">Facility Policy</Badge>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="p-4 border border-dashed rounded-lg bg-muted/20">
+                            <p className="text-sm text-muted-foreground text-center">
+                                <strong>Note:</strong> Your facility has standardized session packages.
+                                All clients must be onboarded using gym-approved plans.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Button variant="outline" disabled>
+                                Create Custom Plan
+                            </Button>
+                            <Button variant="outline" disabled>
+                                Manage Templates
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

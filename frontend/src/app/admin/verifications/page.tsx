@@ -42,19 +42,19 @@ export default function AdminVerifications() {
         }
     };
 
-    if (loading) return <div className="p-8 text-white"><Loader2 className="animate-spin" /></div>;
+    if (loading) return <div className="p-8"><Loader2 className="animate-spin text-primary" /></div>;
 
     const renderList = (items: any[], type: 'gym' | 'trainer') => (
         <div className="space-y-4">
-            {items.length === 0 && <p className="text-zinc-500">No pending requests.</p>}
+            {items.length === 0 && <p className="text-muted-foreground">No pending requests.</p>}
             {items.map((item) => (
-                <Card key={item.id} className="bg-zinc-900 border-zinc-800 text-white">
+                <Card key={item.id}>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle>{type === 'gym' ? item.name : "Trainer Profile"}</CardTitle>
-                            <p className="text-sm text-zinc-400">{type === 'gym' ? item.location : item.bio}</p>
+                            <p className="text-sm text-muted-foreground">{type === 'gym' ? item.location : item.bio}</p>
                         </div>
-                        <Badge variant="outline" className="text-yellow-500 border-yellow-500">{item.verification_status}</Badge>
+                        <Badge variant="outline" className="text-amber-600 border-amber-600 bg-amber-50">{item.verification_status}</Badge>
                     </CardHeader>
                     <CardContent className="flex gap-2 justify-end">
                         <div className="flex gap-2">
@@ -80,11 +80,11 @@ export default function AdminVerifications() {
     );
 
     return (
-        <div className="min-h-screen bg-black text-white p-8">
+        <div className="min-h-screen bg-background p-8">
             <h1 className="text-3xl font-bold mb-8">Verification Requests</h1>
 
             <Tabs defaultValue="gyms" className="w-full">
-                <TabsList className="bg-zinc-900 border-zinc-800 text-white">
+                <TabsList>
                     <TabsTrigger value="gyms">Gyms ({data.gyms.length})</TabsTrigger>
                     <TabsTrigger value="trainers">Trainers ({data.trainers.length})</TabsTrigger>
                 </TabsList>

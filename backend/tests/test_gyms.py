@@ -1,12 +1,11 @@
 from app.models.gym import Gym
+from tests.test_constants import TEST_USER_PASSWORD
+
 
 def test_create_gym_authenticated(client, test_user):
     # 1. Login to get token
-    login_data = {
-        "username": "testuser@example.com",
-        "password": TEST_USER_PASSWORD
-    }
-    response = client.post("/api/v1/auth/login/access-token", data=login_data)
+    login_data = {"username": test_user.email, "password": TEST_USER_PASSWORD}
+    response = client.post("/api/v1/auth/access-token", data=login_data)
     assert response.status_code == 200
     token = response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -15,11 +14,11 @@ def test_create_gym_authenticated(client, test_user):
     payload = {
         "name": "Iron Paradise",
         "location": "123 Muscle Beach",
-        "slug": "iron-paradise"
+        "slug": "iron-paradise",
     }
-    
+
     response = client.post("/api/v1/gyms/", json=payload, headers=headers)
-    
+
     # Debug info
     if response.status_code != 201:
         print(f"FAILED: {response.text}")
@@ -29,7 +28,8 @@ def test_create_gym_authenticated(client, test_user):
     assert data["name"] == payload["name"]
     assert data["slug"] == payload["slug"]
     assert data["admin_id"] == test_user.id
-    assert data["verification_status"] == "DRAFT"
+    assert data["verification_status"] == "PENDING"
+
 
 def test_list_gyms(client, session, test_user):
     # Seed data
@@ -44,12 +44,15 @@ def test_list_gyms(client, session, test_user):
     data = response.json()
     assert len(data) >= 2
 
+
 def test_get_gym_by_id(client, session, test_user):
-    gym = Gym(name="Target Gym", slug="target-gym", location="Loc", admin_id=test_user.id)
+    gym = Gym(
+        name="Target Gym", slug="target-gym", location="Loc", admin_id=test_user.id
+    )
     session.add(gym)
     session.commit()
     session.refresh(gym)
-    
+
     response = client.get(f"/api/v1/gyms/{gym.id}")
     assert response.status_code == 200
     data = response.json()

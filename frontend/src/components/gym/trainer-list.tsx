@@ -28,9 +28,10 @@ interface Association {
 interface TrainerListProps {
     trainers: Association[];
     onInvite: (email: string) => Promise<void>;
+    onStatusUpdate?: (trainerId: number, status: string) => Promise<void>;
 }
 
-export function TrainerList({ trainers, onInvite }: TrainerListProps) {
+export function TrainerList({ trainers, onInvite, onStatusUpdate }: TrainerListProps) {
     const [isInviting, setIsInviting] = useState(false);
     const [inviteEmail, setInviteEmail] = useState("");
     const [loading, setLoading] = useState(false);
@@ -63,14 +64,14 @@ export function TrainerList({ trainers, onInvite }: TrainerListProps) {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Associated Trainers</h2>
-                <Button onClick={() => setIsInviting(true)} className="bg-white text-black hover:bg-zinc-200">
+                <Button onClick={() => setIsInviting(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Invite Trainer
                 </Button>
             </div>
 
             {isInviting && (
-                <Card className="bg-zinc-900 border-zinc-800 animate-in slide-in-from-top-4">
+                <Card className="animate-in slide-in-from-top-4">
                     <CardHeader>
                         <CardTitle className="text-lg">Invite New Trainer</CardTitle>
                     </CardHeader>
@@ -81,7 +82,6 @@ export function TrainerList({ trainers, onInvite }: TrainerListProps) {
                                     placeholder="Trainer's Email Address"
                                     value={inviteEmail}
                                     onChange={(e) => setInviteEmail(e.target.value)}
-                                    className="bg-zinc-950 border-zinc-800"
                                 />
                             </div>
                             <Button onClick={handleInvite} disabled={loading}>
@@ -97,14 +97,14 @@ export function TrainerList({ trainers, onInvite }: TrainerListProps) {
 
             <div className="grid gap-4">
                 {trainers.length === 0 ? (
-                    <Card className="bg-zinc-900 border-zinc-800">
-                        <CardContent className="h-32 flex items-center justify-center text-zinc-500">
+                    <Card>
+                        <CardContent className="h-32 flex items-center justify-center text-muted-foreground">
                             No trainers associated yet. Invite your first trainer!
                         </CardContent>
                     </Card>
                 ) : (
                     trainers.map((assoc, idx) => (
-                        <Card key={idx} className="bg-zinc-900 border-zinc-800">
+                        <Card key={idx} className="hover:border-primary/50 transition-colors">
                             <CardContent className="p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <Avatar>
@@ -113,10 +113,10 @@ export function TrainerList({ trainers, onInvite }: TrainerListProps) {
                                         </AvatarFallback>
                                     </Avatar>
                                     <div>
-                                        <h3 className="font-medium text-white">
+                                        <h3 className="font-medium">
                                             {assoc.trainer.user?.full_name || "Unknown Trainer"}
                                         </h3>
-                                        <div className="text-sm text-zinc-400 flex items-center gap-2">
+                                        <div className="text-sm text-muted-foreground flex items-center gap-2">
                                             <Mail className="w-3 h-3" />
                                             {assoc.trainer.user?.email}
                                         </div>
@@ -124,9 +124,24 @@ export function TrainerList({ trainers, onInvite }: TrainerListProps) {
                                 </div>
                                 <div className="flex items-center gap-4">
                                     {getStatusBadge(assoc.status)}
-                                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                                        Details
-                                    </Button>
+                                    {assoc.status === "PENDING" && onStatusUpdate && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => onStatusUpdate(assoc.trainer.id, "ACTIVE")}
+                                            >
+                                                Approve
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => onStatusUpdate(assoc.trainer.id, "REJECTED")}
+                                            >
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

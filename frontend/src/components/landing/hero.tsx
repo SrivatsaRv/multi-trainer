@@ -28,20 +28,20 @@ export function LandingHero() {
                     <Button
                         asChild
                         size="lg"
-                        className="h-14 px-10 text-lg font-bold transition-all hover:scale-105 active:scale-95"
+                        className="h-14 px-10 text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
                     >
                         <Link href="/auth/register">
-                            Start Free Trial
+                            Get Started
                         </Link>
                     </Button>
                     <Button
                         asChild
                         variant="outline"
                         size="lg"
-                        className="h-14 px-10 text-lg font-bold transition-all hover:scale-105 active:scale-95 bg-transparent"
+                        className="h-14 px-10 text-lg font-bold transition-all hover:scale-105 active:scale-95 bg-background/50"
                     >
                         <Link href="/auth/login">
-                            Gym Login
+                            Full Login
                         </Link>
                     </Button>
                 </div>

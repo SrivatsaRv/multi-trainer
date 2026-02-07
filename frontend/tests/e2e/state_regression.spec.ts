@@ -29,7 +29,8 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         await page.fill('input[name="full_name"]', 'E2E Test Gym');
         await page.fill('input[name="email"]', gymEmail);
         await page.fill('input[name="password"]', TEST_USER_PASSWORD);
-        await page.click('button[type="submit"]');
+        await page.fill('input[name="confirmPassword"]', TEST_USER_PASSWORD);
+        await page.getByRole('button', { name: /sign up/i }).click();
 
         // B. Registration should redirect to dashboard
         await expect(page).toHaveURL('/dashboard');
@@ -76,7 +77,7 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         expect(regRes.ok()).toBeTruthy();
 
         // 2. Login to get Token
-        const loginRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/login/access-token`, {
+        const loginRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/login/access-token`, {
             form: { username: gymEmail, password: TEST_USER_PASSWORD }
         });
         const { access_token } = await loginRes.json();
@@ -115,19 +116,17 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         await page.fill('input[name="password"]', TEST_USER_PASSWORD);
         await page.click('button[type="submit"]');
 
-        await page.click('text=Admin Panel');
+        await page.getByRole('link', { name: /verifications/i }).click();
 
         // Wait for the verifications page to load
-        await expect(page).toHaveURL('/admin/verifications');
+        await expect(page).toHaveURL('/dashboard/admin/verifications');
 
         // We expect to see 'Gym Pending' from the seed data
         await expect(page.locator('text=Gym Pending')).toBeVisible({ timeout: 10000 });
         await expect(page.locator('text=PENDING').first()).toBeVisible();
 
         // We can try to Approve it.
-        // Note: This modifies seeded data. That's fine, it proves it works. 
-        // The cleanup script `make clean-demo-users` handles it.
-        await page.click('button:has-text("Approve") >> nth=0');
+        await page.getByRole('button', { name: /approve/i }).first().click();
 
         await expect(page.locator('text=Gym Approved')).toBeVisible(); // Toast success usually
         // It should disappear from list or update status

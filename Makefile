@@ -1,151 +1,106 @@
-.PHONY: help build up down logs sitrep seed-demo-users seed-gyms seed-trainers clean-demo-users clean-gyms clean-trainers lint format unit-tests integration-tests test-e2e test-all investor-demo-setup prod-all dev-all shell-backend db-shell admin ci-pipeline
+.PHONY: help build up down logs sitrep seed-demo-users clean-demo-users lint format unit-tests test admin prod-all investor-demo-setup
 
 # --- Configuration ---
 BACKEND_CMD := docker-compose exec -T -e PYTHONPATH=. backend
-BACKEND_SHELL := docker-compose exec backend
 FRONTEND_DIR := frontend
 
 help:
 	@echo "======================================================================"
-	@echo "   MULTI-TRAINER PLATFORM - MAKEFILE HELP"
+	@echo "   MULTI-TRAINER PLATFORM - ADMIN OPERATIONS"
 	@echo "======================================================================"
 	@echo ""
-	@echo "CI/CD STAGES (Pipeline Order)"
-	@echo "  1. make build            : Build Docker images (Artifact Stage)"
-	@echo "  2. make up               : Start Ephemeral Test Environment (infra-provision)"
-	@echo "  3. make lint             : Run Static Analysis (flake8, eslint)"
-	@echo "  4. make unit-tests       : Run Fast Tests (No DB required theoretically, but runs in container)"
-	@echo "  5. make integration-tests: Run DB-dependent Backend Tests"
-	@echo "  6. make test-e2e         : Run Full Browser Tests (Playwright)"
-	@echo "  7. make down             : Cleanup Environment"
+	@echo "CORE FLOWS"
+	@echo "  make prod-all            : Full Build -> Lint -> Test -> Seed -> Status"
+	@echo "  make investor-demo-setup : Production Setup + Rich Demo Data"
 	@echo ""
-	@echo "COMPOSED WORKFLOWS (Dev & Prod)"
-	@echo "  make ci-pipeline         : Run FULL Pipeline (Build -> Up -> Lint -> Test-All -> Down)"
-	@echo "  make prod-all            : Clean Build + Static Data + All Tests + Sitrep (Ready for Review)"
-	@echo "  make dev-all             : Clean Build + Static Data + Tests + Logs (Debug Mode)"
-	@echo "  make investor-demo-setup : Production-like Setup + Faker Data (Demo Ready)"
-	@echo ""
-	@echo "DEVELOPMENT UTILITIES"
-	@echo "  make format              : Format Code (black, isort)"
+	@echo "MANAGEMENT"
+	@echo "  make admin cmd=...       : Run CLI Admin Commands (e.g. cmd=list-gyms)"
+	@echo "  make sitrep              : System Health & DB Statistics"
 	@echo "  make logs                : Tail Logs"
-	@echo "  make sitrep              : System Status Check"
-	@echo "  make shell-backend       : Shell into Backend"
-	@echo "  make db-shell            : SQL Shell"
-	@echo "  make admin cmd=...       : Run CLI Admin Commands"
 	@echo ""
-	@echo "DATA OPERATIONS"
-	@echo "  make seed-demo-users     : Seed Static Demo Users"
-	@echo "  make clean-demo-users    : Remove Demo Users"
+	@echo "DATA"
+	@echo "  make seed-demo-users     : Seed Complete Demo Environment"
+	@echo "  make clean-demo-users    : Wipe All Demo Data"
+	@echo ""
+	@echo "CI/DEVELOPMENT"
+	@echo "  make lint                : Run Flake8 & ESLint"
+	@echo "  make test                : Run All Backend & Frontend Tests"
+	@echo "  make format              : Format Code (Black, Isort)"
 	@echo "======================================================================"
 
-# --- STAGE 1: BUILD ---
+# --- INFRASTRUCTURE ---
 build:
-	@echo "[CI] Building Docker Images..."
 	docker-compose build
 
-# --- STAGE 2: ENVIRONMENT ---
 up:
-	@echo "[CI] Starting Ephemeral Environment..."
 	docker-compose up -d
 
 down:
-	@echo "[CI] Tearing Down Environment..."
 	docker-compose down
 
-# --- STAGE 3: LINT ---
+# --- QUALITY ---
 lint:
-	@echo "[CI] Running Static Analysis..."
-	@$(BACKEND_CMD) flake8 .
+	@$(BACKEND_CMD) flake8 app/
 	@cd $(FRONTEND_DIR) && npm run lint
 
-# --- STAGE 4: UNIT TESTS ---
-unit-tests:
-	@echo "[CI] Running Unit Tests..."
-	@$(BACKEND_CMD) pytest tests --ignore=tests/integration
-	@cd $(FRONTEND_DIR) && npm run test
-
-# --- STAGE 5: INTEGRATION TESTS ---
-integration-tests:
-	@echo "[CI] Running Integration Tests..."
-	@$(BACKEND_CMD) pytest tests/integration
-
-# --- STAGE 6: E2E TESTS ---
-test-e2e:
-	@echo "[CI] Running E2E Tests..."
-	@cd $(FRONTEND_DIR) && npx playwright test
-
-# --- Utilities & Composed ---
 format:
-	@echo "Formatting Code..."
-	@$(BACKEND_CMD) black .
-	@$(BACKEND_CMD) isort .
+	@$(BACKEND_CMD) black app/ tests/ verify_analytics.py
+	@$(BACKEND_CMD) isort app/ tests/ verify_analytics.py
 
-test-all: unit-tests integration-tests test-e2e
-	@echo "All Tests Passed"
+test-unit unit-tests:
+	@echo "Running Unit Tests..."
+	@$(BACKEND_CMD) pytest tests -m "not integration"
+	@cd $(FRONTEND_DIR) && npm run test -- --run
 
-logs:
-	docker-compose logs -f -n 100
+test-integration:
+	@echo "Running Integration Tests..."
+	@$(BACKEND_CMD) pytest tests -m "integration"
 
+playwright:
+	@echo "Running Playwright E2E Tests..."
+	@cd $(FRONTEND_DIR) && npm run test:e2e
+
+test: test-unit test-integration playwright
+	@echo "All tests completed."
+
+# --- ADMINISTRATION ---
 sitrep:
-	@$(BACKEND_CMD) python app/db/sitrep.py || echo "Backend container might be down"
-
-shell-backend:
-	$(BACKEND_SHELL) /bin/bash
-
-db-shell:
-	docker-compose exec db psql -U postgres -d gym_saas
+	@$(BACKEND_CMD) python app/db/sitrep.py
 
 admin:
 	@$(BACKEND_CMD) python app/cli.py $(cmd)
 
-# --- Data Helpers ---
+logs:
+	docker-compose logs -f -n 100
+
+# --- DATA ---
 seed-demo-users:
-	@echo "Seeding Static Demo Users..."
+	@echo "Seeding Full Demo Environment..."
 	@$(BACKEND_CMD) python app/db/demo_data.py seed
 
 clean-demo-users:
-	@echo "Cleaning Demo Users..."
+	@echo "Cleaning All Demo Data..."
 	@$(BACKEND_CMD) python app/db/demo_data.py clean
 
-# --- Specific Workflows ---
+seed-test-data:
+	@echo "Seeding Test Personas..."
+	@$(BACKEND_CMD) python app/db/seed_test_data.py
 
-ci-pipeline: build up
-	@echo "Starting Full CI Pipeline..."
-	@echo "Waiting for services..."
-	@sleep 10
-	@$(MAKE) lint
-	@$(MAKE) test-all
-	@$(MAKE) down
-	@echo "CI Pipeline Complete - Artifacts Verified."
-
-investor-demo-setup: down build up
-	@echo "Waiting for services..."
-	@sleep 10
-	@$(MAKE) seed-demo-users
-	@echo "Seeding Investor Analytics..."
-	@$(BACKEND_CMD) python app/db/demo_data.py seed-analytics
-	@echo "Investor Demo Ready: http://localhost:3000"
+# --- PRIMARY ENTRY POINTS ---
 
 prod-all: down build up
 	@echo "Starting Production Readiness Check..."
-	@echo "Waiting for services..."
-	@sleep 10
-	@$(MAKE) lint
-	@$(MAKE) test-all
-	@$(MAKE) seed-demo-users
-	@$(MAKE) sitrep
-	@echo "Production Ready"
-
-dev-all: down build up
-	@echo "Starting Development Environment..."
-	@echo "Waiting for services..."
 	@sleep 10
 	@$(MAKE) format
 	@$(MAKE) lint
-	@$(MAKE) test-all
+	@$(MAKE) test
 	@$(MAKE) seed-demo-users
-	@echo "Dev Ready. Attaching logs..."
-	@$(MAKE) logs
+	@$(MAKE) sitrep
+	@echo "Production Ready."
 
-# Alias
-all: prod-all
+investor-demo-setup: down build up
+	@echo "Setting up Investor Demo..."
+	@sleep 15
+	@$(MAKE) seed-demo-users
+	@$(MAKE) sitrep
+	@echo "Investor Demo Ready: http://localhost:3000"

@@ -24,12 +24,6 @@ export default function Dashboard() {
                         Welcome back, {user.full_name}
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={logout}
-                >
-                    Logout
-                </Button>
             </div>
 
             {/* Role-specific dashboard content */}

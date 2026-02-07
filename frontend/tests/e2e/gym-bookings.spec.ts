@@ -4,7 +4,7 @@ import { TEST_USER_EMAIL, TEST_USER_PASSWORD } from '../test-constants';
 test.describe('Gym Bookings View', () => {
     test('should load bookings page from dashboard', async ({ page }) => {
         // 1. Login
-        await page.goto('/login');
+        await page.goto('/auth/login');
         await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /sign in/i }).click();
@@ -12,8 +12,8 @@ test.describe('Gym Bookings View', () => {
         // 2. Dashboard
         await expect(page).toHaveURL(/dashboard/);
 
-        // 3. Click View Bookings
-        await page.getByRole('button', { name: /view bookings/i }).click();
+        // 3. Click Bookings link
+        await page.getByRole('link', { name: /bookings/i }).click();
 
         // 4. Verify Page
         await expect(page).toHaveURL(/bookings/);

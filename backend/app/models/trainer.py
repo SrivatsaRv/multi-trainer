@@ -1,9 +1,16 @@
-from typing import Optional, List, Dict, Any
-from sqlmodel import SQLModel, Field, Relationship
+from typing import TYPE_CHECKING, Dict, List, Optional
+
 from pydantic import BaseModel
 from sqlalchemy import JSON, Column
-from app.models.gym import VerificationStatus
+from sqlmodel import Field, Relationship, SQLModel
+
 from app.models.associations import GymTrainer
+from app.models.gym import VerificationStatus
+
+if TYPE_CHECKING:
+    from app.models.gym import Gym
+    from app.models.user import User
+
 
 class TrainerBase(SQLModel):
     bio: Optional[str] = None
@@ -13,19 +20,22 @@ class TrainerBase(SQLModel):
     experience_years: int = Field(default=0)
     social_links: Dict[str, str] = Field(default={}, sa_column=Column(JSON))
     availability: Dict[str, List[str]] = Field(default={}, sa_column=Column(JSON))
-    verification_status: VerificationStatus = VerificationStatus.DRAFT
+    verification_status: VerificationStatus = VerificationStatus.PENDING
+
 
 class Trainer(TrainerBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
-    
+
     # Relationships
     user: Optional["User"] = Relationship(back_populates="trainer")
     gyms: List["Gym"] = Relationship(back_populates="trainers", link_model=GymTrainer)
 
+
 class TrainerCreate(BaseModel):
     # Minimal create requirements for friction-less onboarding
     bio: Optional[str] = None
+
 
 class TrainerUpdate(BaseModel):
     bio: Optional[str] = None

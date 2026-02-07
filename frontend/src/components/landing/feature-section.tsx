@@ -13,6 +13,7 @@ interface FeatureSectionProps {
     ctaLink: string;
     previewLabel: string;
     reversed?: boolean;
+    imageSrc?: string;
 }
 
 export function FeatureSection({
@@ -24,7 +25,8 @@ export function FeatureSection({
     ctaText,
     ctaLink,
     previewLabel,
-    reversed = false
+    reversed = false,
+    imageSrc
 }: FeatureSectionProps) {
     const Icon = icon === "gym" ? Building2 : UserCircle2;
     const iconColor = icon === "gym" ? "text-primary" : "text-primary"; // Changed from hardcoded emerald/blue
@@ -64,8 +66,16 @@ export function FeatureSection({
                     "aspect-video bg-card rounded-[2.5rem] border shadow-xl flex items-center justify-center text-muted-foreground font-mono italic text-lg overflow-hidden group relative",
                     reversed && "md:order-1"
                 )}>
-                    <div className="absolute inset-0 bg-gradient-to-tr from-muted/50 to-transparent opacity-50 group-hover:opacity-30 transition-opacity" />
-                    [{previewLabel}]
+                    <div className="absolute inset-0 bg-gradient-to-tr from-muted/50 to-transparent opacity-50 group-hover:opacity-30 transition-opacity z-10" />
+                    {imageSrc ? (
+                        <img
+                            src={imageSrc}
+                            alt={previewLabel}
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                    ) : (
+                        `[${previewLabel}]`
+                    )}
                 </div>
             </div>
         </LandingSection>

@@ -13,13 +13,12 @@ test.describe('Authentication Flow', () => {
 
     test('should show login and register buttons when not authenticated', async ({ page }) => {
         await page.goto(BASE_URL);
-
         // Wait for page to load
         await page.waitForLoadState('networkidle');
 
-        // Should show login and register buttons
-        await expect(page.getByRole('link', { name: /log in/i })).toBeVisible();
-        await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
+        // Should show login and register buttons in header
+        await expect(page.locator('header').getByRole('link', { name: /log in/i })).toBeVisible();
+        await expect(page.locator('header').getByRole('link', { name: /get started/i })).toBeVisible();
 
         // Should NOT show logout button
         await expect(page.getByRole('button', { name: /logout/i })).not.toBeVisible();
@@ -46,7 +45,7 @@ test.describe('Authentication Flow', () => {
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
 
         // Submit form
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
 
         // Should redirect to dashboard
         await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 10000 });
@@ -64,7 +63,7 @@ test.describe('Authentication Flow', () => {
         await page.getByLabel(/password/i).fill('wrongpassword');
 
         // Submit form
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
 
         // Should show error toast
         await expect(page.getByText(/invalid credentials/i)).toBeVisible();
@@ -78,7 +77,7 @@ test.describe('Authentication Flow', () => {
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill('gym_draft@example.com');
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
 
         // Wait for redirect
         await page.waitForURL(`${BASE_URL}/dashboard`);
@@ -100,14 +99,14 @@ test.describe('Authentication Flow', () => {
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill('gym_draft@example.com');
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
         // Go to home page
         await page.goto(BASE_URL);
 
         // Click logout
-        await page.getByRole('button', { name: /logout/i }).click();
+        await page.getByRole('banner').getByRole('button', { name: /logout/i }).click();
 
         // Should redirect to login page
         await expect(page).toHaveURL(`${BASE_URL}/auth/login`);
@@ -122,7 +121,7 @@ test.describe('Authentication Flow', () => {
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
         // Navigate to home
@@ -150,7 +149,7 @@ test.describe('Authentication Flow', () => {
 
         // Should show login/register (not authenticated)
         await expect(page.getByRole('link', { name: /log in/i })).toBeVisible();
-        await expect(page.getByRole('link', { name: /get started/i })).toBeVisible();
+        await expect(page.locator('header').getByRole('link', { name: /get started/i })).toBeVisible();
 
         // Token should be cleared
         const token = await page.evaluate(() => localStorage.getItem('token'));
@@ -162,7 +161,7 @@ test.describe('Authentication Flow', () => {
         await page.goto(`${BASE_URL}/auth/login`);
         await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByRole('button', { name: /login/i }).click();
+        await page.getByRole('button', { name: /sign in/i }).click();
         await page.waitForURL(`${BASE_URL}/dashboard`);
 
         const firstToken = await page.evaluate(() => localStorage.getItem('token'));
@@ -172,7 +171,7 @@ test.describe('Authentication Flow', () => {
         await newPage.goto(`${BASE_URL}/auth/login`);
         await newPage.getByLabel(/email/i).fill(TEST_USER_EMAIL);
         await newPage.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await newPage.getByRole('button', { name: /login/i }).click();
+        await newPage.getByRole('button', { name: /sign in/i }).click();
         await newPage.waitForURL(`${BASE_URL}/dashboard`);
 
         const secondToken = await newPage.evaluate(() => localStorage.getItem('token'));
@@ -185,7 +184,49 @@ test.describe('Authentication Flow', () => {
         expect(firstToken).toBeTruthy();
         expect(secondToken).toBeTruthy();
     });
+
+    test('should allow registration as a Trainer via role query param', async ({ page }) => {
+        const email = `trainer_${uniqueId()}@example.com`;
+        await page.goto(`${BASE_URL}/auth/register?role=TRAINER`);
+
+        await expect(page.getByText(/create your trainer account/i)).toBeVisible();
+        await page.getByLabel(/full name/i).fill('E2E Trainer');
+        await page.getByLabel(/email/i).fill(email);
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
+        await page.getByLabel(/confirm password/i).fill(TEST_USER_PASSWORD);
+
+        await page.getByRole('button', { name: /sign up/i }).click();
+
+        await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 15000 });
+        const userRole = await page.evaluate(() => {
+            const userStr = localStorage.getItem('user');
+            return userStr ? JSON.parse(userStr).role : null;
+        });
+        expect(userRole).toBe('TRAINER');
+    });
+
+    test('should allow registration as a Gym Admin via role query param', async ({ page }) => {
+        const email = `gymadmin_${uniqueId()}@example.com`;
+        await page.goto(`${BASE_URL}/auth/register?role=GYM_ADMIN`);
+
+        await expect(page.getByText(/create your gym admin account/i)).toBeVisible();
+        await page.getByLabel(/full name/i).fill('E2E Gym Admin');
+        await page.getByLabel(/email/i).fill(email);
+        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
+        await page.getByLabel(/confirm password/i).fill(TEST_USER_PASSWORD);
+
+        await page.getByRole('button', { name: /sign up/i }).click();
+
+        await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 15000 });
+        const userRole = await page.evaluate(() => {
+            const userStr = localStorage.getItem('user');
+            return userStr ? JSON.parse(userStr).role : null;
+        });
+        expect(userRole).toBe('GYM_ADMIN');
+    });
 });
+
+const uniqueId = () => Math.random().toString(36).substring(7);
 
 // Helper function to create an expired JWT token
 function createExpiredToken(): string {

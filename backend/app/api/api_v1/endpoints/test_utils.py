@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
+
 from app.api.api_v1.deps import get_session
+# settings removed if unused
 from app.models.user import User
-from app.core.config import settings
 
 router = APIRouter()
+
 
 @router.delete("/purge-user")
 def purge_test_user(
@@ -17,18 +19,31 @@ def purge_test_user(
     """
     # Safety Check: only allow in test/local and only specific email patterns
     if not (email.startswith("test_") or email.startswith("e2e_")):
-        raise HTTPException(status_code=400, detail="Can only purge test users (prefix 'test_' or 'e2e_')")
-    
+        raise HTTPException(
+            status_code=400,
+            detail="Can only purge test users (prefix 'test_' or 'e2e_')",
+        )
+
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         return {"status": "not_found"}
-    
-    # Cascade delete (Manual for now as seen in demo_data)
+
+    from sqlalchemy import text
+    # 1. Clear sessions first to avoid IntegrityError
+    session.execute(text("DELETE FROM user_sessions WHERE user_id = :uid"), {"uid": user.id})
+
+    # 2. Cascade delete profiles & associations
     if user.gym:
+        gid = user.gym.id
+        session.execute(text("DELETE FROM clientsubscription WHERE gym_id = :gid"), {"gid": gid})
+        session.execute(text("DELETE FROM sessionpackage WHERE gym_id = :gid"), {"gid": gid})
+        session.execute(text("DELETE FROM gymtrainer WHERE gym_id = :gid"), {"gid": gid})
         session.delete(user.gym)
     if user.trainer:
+        tid = user.trainer.id
+        session.execute(text("DELETE FROM gymtrainer WHERE trainer_id = :tid"), {"tid": tid})
         session.delete(user.trainer)
-    
+
     session.delete(user)
     session.commit()
     return {"status": "deleted", "email": email}

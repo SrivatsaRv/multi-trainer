@@ -7,27 +7,27 @@ test.describe('API-First Re-architecture UI Verification', () => {
     });
 
     test('should have visible and accessible CTA buttons in Hero pointing to onboarding', async ({ page }) => {
-        const gymButton = page.getByRole('link', { name: 'Start as Gym' });
-        const trainerButton = page.getByRole('link', { name: 'Join as Trainer' });
+        const getStartedButton = page.locator('#hero').getByRole('link', { name: 'Get Started' });
+        const loginButton = page.locator('#hero').getByRole('link', { name: 'Full Login' });
 
-        await expect(gymButton).toBeVisible();
-        await expect(trainerButton).toBeVisible();
+        await expect(getStartedButton).toBeVisible();
+        await expect(loginButton).toBeVisible();
 
         // Verify API-first routes
-        await expect(gymButton).toHaveAttribute('href', '/onboard-as-gym');
-        await expect(trainerButton).toHaveAttribute('href', '/onboard-as-trainer');
+        await expect(getStartedButton).toHaveAttribute('href', '/auth/register');
+        await expect(loginButton).toHaveAttribute('href', '/auth/login');
     });
 
     test('should verify marketplace navigation', async ({ page }) => {
-        const gymLink = page.getByRole('link', { name: 'Gyms', exact: true });
-        const trainerLink = page.getByRole('link', { name: 'Trainers', exact: true });
+        const gymLink = page.getByRole('link', { name: 'For Gyms', exact: true });
+        const trainerLink = page.getByRole('link', { name: 'For Trainers', exact: true });
 
         await expect(gymLink).toBeVisible();
         await expect(trainerLink).toBeVisible();
 
-        await gymLink.click();
-        await expect(page).toHaveURL(/.*\/gyms/);
-        await expect(page.locator('h1')).toContainText('Partner Gyms');
+        // Note: These are anchor links to sections now
+        await expect(gymLink).toHaveAttribute('href', '#gyms');
+        await expect(trainerLink).toHaveAttribute('href', '#trainers');
     });
 
     test('should verify feature section CTAs point to new onboarding', async ({ page }) => {
@@ -37,7 +37,7 @@ test.describe('API-First Re-architecture UI Verification', () => {
         await expect(gymFeatureBtn).toBeVisible();
         await expect(trainerFeatureBtn).toBeVisible();
 
-        await expect(gymFeatureBtn).toHaveAttribute('href', '/onboard-as-gym');
-        await expect(trainerFeatureBtn).toHaveAttribute('href', '/onboard-as-trainer');
+        await expect(gymFeatureBtn).toHaveAttribute('href', '/auth/register?role=GYM_ADMIN');
+        await expect(trainerFeatureBtn).toHaveAttribute('href', '/auth/register?role=TRAINER');
     });
 });

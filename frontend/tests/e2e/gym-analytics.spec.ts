@@ -4,7 +4,7 @@ import { TEST_USER_EMAIL, TEST_USER_PASSWORD } from '../test-constants';
 test.describe('Gym Analytics Dashboard', () => {
     test('should load analytics page and display revenue', async ({ page, request }) => {
         // 1. Login
-        await page.goto('/login');
+        await page.goto('/auth/login');
         await page.getByLabel(/email/i).fill(TEST_USER_EMAIL);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /sign in/i }).click();
@@ -15,13 +15,14 @@ test.describe('Gym Analytics Dashboard', () => {
         // Check if we are on gym dashboard
         await expect(page.getByText('Facility Status')).toBeVisible();
 
-        // Click Analytics button (assuming we added it)
-        await page.getByRole('button', { name: /analytics/i }).click();
+        // Click Analytics link
+        await page.getByRole('link', { name: /analytics/i }).click();
 
         // 3. Verify Analytics Page
         await expect(page).toHaveURL(/analytics/);
         await expect(page.getByText('Analytics Dashboard')).toBeVisible();
         await expect(page.getByText('Total Revenue')).toBeVisible();
+        await expect(page.getByText(/₹/)).toBeVisible(); // Check for INR currency symbol
         await expect(page.getByText('Occupancy Rate')).toBeVisible();
 
         // Verify Chart Containers exist (Metrics are checked above)

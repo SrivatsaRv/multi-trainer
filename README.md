@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Multi-Trainer SaaS Platform
 
-## Getting Started
+**A comprehensive fitness management platform connecting Gyms, Trainers, and Clients.**
+Built with **Next.js 14 (Frontend)**, **FastAPI (Backend)**, and **PostgreSQL**.
+Features real-time booking, workout logging, analytics, and role-based access control.
 
-First, run the development server:
+## Quick Start (Investor Demo)
+
+The easiest way to see the platform in action is to run the standardized demo setup:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Full Teardown & Rebuild with Seeded Data (Users, Templates, Bookings)
+make investor-demo-setup
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Access the application at: [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Default Credentials
+| Role | Email | Password |
+|---|---|---|
+| **Trainer** | `tr_active@example.com` | `password` |
+| **Gym Owner** | `gym_owner@example.com` | `password` |
+| **Client** | `client_active@example.com` | `password` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Key Features
 
-To learn more about Next.js, take a look at the following resources:
+### 1. Smart Booking System
+- **Real-time Availability**: Trainers define slots; Clients book based on gym hours.
+- **Credit System**: Clients purchase session packages; credits deduct automatically.
+- **Rules Engine**: Prevents double-booking and enforces cancellation policies.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 2. Global Workout Templates & Logging
+- **Template Library**: 8+ Global Templates (Legs, Chest, HIIT, etc.).
+- **One-Click Load**: Trainers can load a full workout into a client session.
+- **Exercise History**: Tracks volume, sets, reps, and 1RM progress over time.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Analytics & Dashboard
+- **Trainer View**: "Today's Schedule", Revenue Charts, Client Retention.
+- **Gym View**: Facility utilisation, Trainer Roster management.
+- **Client View**: Progress tracking and booking history.
 
-## Deploy on Vercel
+### 4. Robust Architecture
+- **Unified Profile Service**: Single source of truth for User attributes.
+- **Atomic State Management**: strictly typed state transitions (Draft -> Verified).
+- **Security**: JWT Authentication, Role-Based Access Control (RBAC).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development Setup
+
+### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+ (Local Dev)
+- Python 3.11+ (Local Dev)
+
+### Commands
+Standardized via `Makefile`:
+
+```bash
+# Start Environment (Dev Mode with Hot Reload)
+make dev-all
+
+# Run All Tests (Unit + Integration + E2E)
+make test-all
+
+# View System Status (Sitrep)
+make sitrep
+
+# Logs
+make logs
+```
+
+## Testing Strategy
+We employ a 3-layer testing pyramid:
+1.  **Unit Tests** (`backend/tests`): Business logic, Models, Auth (Pytest).
+2.  **Integration Tests**: API Endpoints with DB (Dockerized).
+3.  **E2E Tests** (`frontend/tests`): Critical User Journeys via **Playwright**.
+    - Authentication Flow
+    - Trainer Template Loading
+    - Gym Association
+
+## Tech Stack
+- **Frontend**: Next.js 14 (App Router), TailwindCSS, ShadCN UI, Recharts.
+- **Backend**: FastAPI, SQLModel (SQLAlchemy+Pydantic), Postgres.
+- **Infrastructure**: Docker Compose, Nginx (optional proxy), Make.
+
+---
+*Generated for One2N Multi-Trainer Project - Feb 2026*
