@@ -107,19 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (loading || status === "loading") return;
 
     const isAuthPage = pathname.startsWith("/auth");
-    const isPublicPage = pathname === "/" || pathname.startsWith("/auth");
+    const isPublicPage = pathname === "/" || isAuthPage;
     const isProtectedPage = !isPublicPage;
 
     if (user) {
-      // Authenticated users should not see landing or auth pages
-      if (pathname === "/" || isAuthPage) {
+      if (isAuthPage || pathname === "/") {
         router.replace("/dashboard");
       }
-    } else {
-      // Unauthenticated users should not see protected pages
-      if (isProtectedPage) {
-        router.replace("/auth/login");
-      }
+    } else if (isProtectedPage) {
+      router.replace("/auth/login");
     }
   }, [user, loading, status, pathname, router]);
 

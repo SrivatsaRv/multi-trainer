@@ -11,29 +11,23 @@ import { useAuth } from "@/contexts/auth-context";
 export function AppHeader() {
     const router = useRouter();
     const pathname = usePathname();
-    const { logout } = useAuth();
-    const [user, setUser] = useState<{ email: string } | null>(null);
-
-    useEffect(() => {
-        const token = getAuthToken();
-        if (token) {
-            try {
-                const payload = decodeToken(token);
-                setUser({ email: "User" });
-            } catch (e) {
-                clearAuthToken();
-                setUser(null);
-            }
-        } else {
-            setUser(null);
-        }
-    }, [pathname]);
+    const { user, profile, logout } = useAuth();
 
     const handleLogout = () => {
         logout();
     };
 
     const isAuthPage = pathname?.startsWith("/auth");
+
+    // Dynamic profile link based on role
+    const getProfileLink = () => {
+        if (!user || !profile) return "/dashboard";
+        if (user.role === "TRAINER") {
+            return `/dashboard/trainer/${profile.id}/profile`;
+        }
+        // For GYM_ADMIN, we don't have a specific profile page yet, using dashboard
+        return "/dashboard";
+    };
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background">
@@ -48,9 +42,11 @@ export function AppHeader() {
                     <div className="flex items-center space-x-2">
                         {user ? (
                             <>
-                                <Button variant="ghost" onClick={() => router.push("/profile")}>
-                                    <User className="mr-2 h-4 w-4" />
-                                    Profile
+                                <Button variant="ghost" asChild>
+                                    <Link href={getProfileLink()}>
+                                        <User className="mr-2 h-4 w-4" />
+                                        Profile
+                                    </Link>
                                 </Button>
                                 <Button variant="ghost" onClick={handleLogout}>
                                     <LogOut className="mr-2 h-4 w-4" />
@@ -59,8 +55,8 @@ export function AppHeader() {
                             </>
                         ) : (
                             <>
-                                <Button variant="ghost" onClick={() => router.push("/auth/login")}>
-                                    Login
+                                <Button variant="ghost" asChild>
+                                    <Link href="/auth/login">Login</Link>
                                 </Button>
                                 <Button asChild>
                                     <Link href="/auth/register">Get Started</Link>

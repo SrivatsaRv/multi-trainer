@@ -4,22 +4,15 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Dumbbell, LogOut, LayoutDashboard } from "lucide-react";
-import { useEffect, useState } from "react";
-import { isAuthenticated, clearAuthToken } from "@/lib/session";
+import { useAuth } from "@/contexts/auth-context";
 
 export function Header() {
     const router = useRouter();
     const pathname = usePathname();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-    useEffect(() => {
-        setIsLoggedIn(isAuthenticated());
-    }, [pathname]);
+    const { user, logout } = useAuth();
 
     const handleLogout = () => {
-        clearAuthToken();
-        setIsLoggedIn(false);
-        router.push("/auth/login");
+        logout();
     };
 
     return (
@@ -48,7 +41,7 @@ export function Header() {
                 </nav>
 
                 <div className="flex items-center gap-4">
-                    {isLoggedIn ? (
+                    {user ? (
                         <>
                             <Button variant="ghost" asChild className="text-sm">
                                 <Link href="/dashboard">
