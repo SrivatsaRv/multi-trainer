@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthToken, clearAuthToken, setAuthToken } from "@/lib/session";
+import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 
 interface User {
   id: string;
@@ -32,6 +33,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -39,59 +41,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const logout = () => {
+  const logout = async () => {
     clearAuthToken();
     setUser(null);
     setProfile(null);
     setToken(null);
-    window.location.href = "/auth/login";
+    await nextAuthSignOut({ callbackUrl: "/auth/login" });
   };
 
   const login = async (newToken: string, newUser?: User) => {
+    // This is now mostly a no-op because NextAuth handles session
+    // But we might keep it for manual overrides if needed
     setAuthToken(newToken);
     setToken(newToken);
-
-    if (newUser) {
-      setUser(newUser);
-      // We still might need profile if not provided, or we can fetch it.
-      // But for initial login/register, avoiding the race is key.
-      // Fetch profile in bg or rely on refresh?
-      // For now, let's just force reload, but at least we have the user locally?
-      // Actually, if we force reload, local state is wiped anyway.
-      // The reload relies on localStorage token -> checkAuth -> api.users.me().
-      // So this optimization ONLY helps if we DON'T reload.
-      // But the reload was added to FIX race conditions.
-
-      // If we rely on reload, we DON'T need to pass user object here.
-      // The issue is likely api.users.me() failing AFTER reload.
-
-      // If api.users.me() fails, it's because of backend issue.
-      // I fixed backend issue (model_dump).
-      // So maybe I DON'T need to change frontend signature?
-
-      // Let's stick to the reload strategy for stability.
-      // If I just rely on backend fixes, the reload loop will work.
-
-      window.location.href = "/dashboard";
-      return;
-    }
-
-    try {
-      const data = await api.users.me();
-      setUser(data.user);
-      setProfile(data.gym || data.trainer);
-      // Force reload to ensure clean state and avoid RSC race conditions
-      window.location.href = "/dashboard";
-    } catch (error) {
-      console.error("Login state update failed:", error);
-      // Fallback to reload if state update fails
-      window.location.href = "/dashboard";
-    }
+    if (newUser) setUser(newUser);
+    window.location.href = "/dashboard";
   };
 
   const refreshProfile = async () => {
-    if (!user) return;
-
+    if (!token) return;
     try {
       const data = await api.users.me();
       setProfile(data.gym || data.trainer);
@@ -100,31 +68,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const checkAuth = async () => {
-    const token = getAuthToken();
-    setToken(token); // Set token state
+  // Sync session with local state
+  useEffect(() => {
+    if (status === "loading") return;
 
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    if (status === "authenticated" && session?.user) {
+      const accessToken = (session.user as any).accessToken;
 
-    try {
-      const data = await api.users.me();
-      setUser(data.user);
-      setProfile(data.gym || data.trainer);
-    } catch (error) {
-      clearAuthToken();
+      if (accessToken) {
+        setAuthToken(accessToken);
+        setToken(accessToken);
+
+        // Fetch full user details if needed, or trust session
+        // We trust session for id/role, but might need full profile for verification_status
+        api.users.me().then(data => {
+          setUser(data.user);
+          setProfile(data.gym || data.trainer);
+          setLoading(false);
+        }).catch(err => {
+          console.error("Failed to fetch user details", err);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    } else if (status === "unauthenticated") {
       setUser(null);
       setProfile(null);
-    } finally {
+      setToken(null);
+      clearAuthToken();
       setLoading(false);
     }
-  };
+  }, [session, status]);
+
 
   // Route protection logic
   useEffect(() => {
-    if (loading) return;
+    if (loading || status === "loading") return;
 
     const isAuthPage = pathname.startsWith("/auth");
     const isPublicPage = pathname === "/" || pathname.startsWith("/auth");
@@ -134,26 +114,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Authenticated users should not see landing or auth pages
       if (pathname === "/" || isAuthPage) {
         router.replace("/dashboard");
-        return;
       }
     } else {
       // Unauthenticated users should not see protected pages
       if (isProtectedPage) {
         router.replace("/auth/login");
-        return;
       }
     }
-  }, [user, loading, pathname, router]);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  }, [user, loading, status, pathname, router]);
 
   const value = {
     user,
     profile,
-    loading,
-    token, // Exposed token
+    loading: loading || status === "loading",
+    token,
     logout,
     login,
     refreshProfile

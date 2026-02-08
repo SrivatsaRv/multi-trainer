@@ -164,7 +164,7 @@ export default function ClientDetailPage() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
                                         labelFormatter={(label) => format(new Date(label), 'PPP')}
-                                        formatter={(value: number) => [`${value} kg`, 'Volume']}
+                                        formatter={(value: any) => [`${value} kg`, 'Volume']}
                                     />
                                     <Line
                                         type="monotone"

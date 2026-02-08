@@ -166,6 +166,12 @@ export function TrainerDashboard() {
                         >
                             Trainer Analytics
                         </Button>
+                        <Button
+                            variant="default"
+                            onClick={() => router.push(`/dashboard/trainer/gyms`)}
+                        >
+                            Find Gym
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

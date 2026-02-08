@@ -112,7 +112,57 @@ def cancel_application(
 
     session.delete(application)
     session.commit()
+    session.delete(application)
+    session.commit()
     return {"message": "Application cancelled"}
+
+
+@router.get("/gym/{gym_id}", response_model=List[Any])
+def read_gym_applications(
+    gym_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Retrieve applications for a specific gym (Gym Admin only).
+    """
+    gym = session.get(Gym, gym_id)
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gym not found")
+    
+    if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    from app.models.trainer import Trainer
+    from app.models.user import User as UserModel
+
+    # Join with Trainer and User to get name/email
+    statement = (
+        select(GymApplication, Trainer, UserModel)
+        .join(Trainer, GymApplication.trainer_id == Trainer.id)
+        .join(UserModel, Trainer.user_id == UserModel.id)
+        .where(GymApplication.gym_id == gym_id)
+        .where(GymApplication.status == ApplicationStatus.PENDING)
+    )
+
+    results = session.exec(statement).all()
+
+    response = []
+    for app, trainer, user in results:
+        response.append({
+            "id": app.id,
+            "status": app.status,
+            "created_at": app.created_at,
+            "message": app.message,
+            "trainer": {
+                "id": trainer.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "bio": trainer.bio,
+            }
+        })
+    
+    return response
 
 # Gym-side endpoints could go here or in gyms.py
 # For now keeping it trainer-centric as per folder name, 

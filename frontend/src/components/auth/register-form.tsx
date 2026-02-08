@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { setAuthToken } from "@/lib/session";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 const registerSchema = z.object({
     full_name: z.string().min(2, "Name is required"),
@@ -53,14 +54,27 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
     async function onSubmit(values: z.infer<typeof registerSchema>) {
         const { confirmPassword, ...payload } = values;
         try {
+            // 1. Register the user via API
             const response = await api.auth.register(payload);
 
             if (response.access_token) {
-                toast.success("Registration successful!");
-                const rolePath = values.role === "TRAINER" ? "trainer" : "gym";
-                // We bypass the AuthContext.login redirect for onboarding flow
-                setAuthToken(response.access_token);
-                window.location.href = `/auth/onboarding/${rolePath}`;
+                toast.success("Registration successful! Logging you in...");
+
+                // 2. Create NextAuth session using the credentials
+                const result = await signIn("credentials", {
+                    email: values.email,
+                    password: values.password,
+                    redirect: false,
+                });
+
+                if (result?.ok) {
+                    const rolePath = values.role === "TRAINER" ? "trainer" : "gym";
+                    router.push(`/auth/onboarding/${rolePath}`);
+                    router.refresh(); // Ensure middleware sees the new cookie
+                } else {
+                    toast.error("Registration successful, but auto-login failed. Please sign in.");
+                    router.push("/auth/login");
+                }
             }
         } catch (error: any) {
             console.error(error);

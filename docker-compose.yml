@@ -30,12 +30,11 @@ services:
       - BACKEND_INTERNAL_URL=http://backend:8000
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    command: sh -c "npm install && npm run dev"
     depends_on:
       - backend
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
 
   db:
     image: postgres:16-alpine

@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 const loginSchema = z.object({
     username: z.string().email("Invalid email"), // OAuth2 form expects 'username'
@@ -25,10 +27,11 @@ export function LoginForm() {
     const { user, login } = useAuth();
 
     // Redirect if already authenticated
-    if (user) {
-        router.replace("/dashboard");
-        return null;
-    }
+    useEffect(() => {
+        if (user) {
+            router.replace("/dashboard");
+        }
+    }, [user, router]);
 
     const form = useForm<z.infer<typeof loginSchema>>({
         resolver: zodResolver(loginSchema),
@@ -40,13 +43,26 @@ export function LoginForm() {
 
     async function onSubmit(values: z.infer<typeof loginSchema>) {
         try {
-            const response = await api.auth.login(values);
-            if (response.access_token) {
+            const result = await signIn("credentials", {
+                email: values.username,
+                password: values.password,
+                redirect: false,
+            });
+
+            if (result?.error) {
+                toast.error("Invalid credentials");
+                return;
+            }
+
+            if (result?.ok) {
                 toast.success("Login successful");
-                await login(response.access_token);
+                // The SessionProvider will automatically update the session
+                // and the useEffect above will redirect to dashboard
+                // Force a hard reload to ensure middleware cookies are recognized if needed
+                router.refresh();
             }
         } catch (error: any) {
-            toast.error("Invalid credentials");
+            toast.error("Something went wrong");
         }
     }
 
