@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isAuthPage || pathname === "/") {
         router.replace("/dashboard");
       }
-    } else if (isProtectedPage) {
+    } else if (isProtectedPage && !isAuthPage) {
       router.replace("/auth/login");
     }
   }, [user, loading, status, pathname, router]);

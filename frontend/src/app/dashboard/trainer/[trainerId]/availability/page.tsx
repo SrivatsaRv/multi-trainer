@@ -36,12 +36,17 @@ export default function TrainerAvailabilityPage() {
     }, [trainerId]);
 
     const handleSave = async (newAvailability: Availability) => {
+        setLoading(true);
         try {
+            console.log("Saving availability:", newAvailability);
             await api.trainers.patch(trainerId, { availability: newAvailability });
             toast.success("Availability updated successfully");
             setAvailability(newAvailability);
-        } catch {
+        } catch (err) {
+            console.error("Save failed:", err);
             toast.error("Failed to update availability");
+        } finally {
+            setLoading(false);
         }
     }
 

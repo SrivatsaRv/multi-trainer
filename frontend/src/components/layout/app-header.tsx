@@ -19,14 +19,9 @@ export function AppHeader() {
 
     const isAuthPage = pathname?.startsWith("/auth");
 
-    // Dynamic profile link based on role
+    // Dynamic profile link for quick settings
     const getProfileLink = () => {
-        if (!user || !profile) return "/dashboard";
-        if (user.role === "TRAINER") {
-            return `/dashboard/trainer/${profile.id}/profile`;
-        }
-        // For GYM_ADMIN, we don't have a specific profile page yet, using dashboard
-        return "/dashboard";
+        return "/dashboard/settings";
     };
 
     return (

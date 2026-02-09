@@ -43,17 +43,6 @@ def seed_investor_demo():
             session.commit()
             print(f"✅ Created Gym: Iron Titan Fitness")
 
-            # Create Standard Package
-            pkg = SessionPackage(
-                name="Titan Starter - 10 Sessions",
-                description="10 hardcore training sessions. Valid for 60 days.",
-                price_inr=15000,
-                session_count=10,
-                gym_id=gym.id
-            )
-            session.add(pkg)
-            session.commit()
-            print("  - Added Package: Titan Starter")
 
         # 2. Urban Pulse Yoga (Wellness)
         # ------------------------------------------------

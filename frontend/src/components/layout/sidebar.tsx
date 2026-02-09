@@ -11,7 +11,9 @@ import {
     Settings,
     LineChart,
     Shield,
-    Clock
+    Clock,
+    Building,
+    User
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -53,8 +55,13 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
                 icon: Calendar,
             },
             {
+                title: "Plans",
+                href: `/dashboard/gym/${gymId}/packages`,
+                icon: CreditCard,
+            },
+            {
                 title: "Settings",
-                href: `/dashboard/gym/${gymId}/settings`,
+                href: `/dashboard/settings`,
                 icon: Settings,
             },
         ];
@@ -88,6 +95,11 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
             {
                 title: "Profile",
                 href: `/dashboard/trainer/${trainerId}/profile`,
+                icon: User,
+            },
+            {
+                title: "Settings",
+                href: `/dashboard/settings`,
                 icon: Settings,
             },
         ];

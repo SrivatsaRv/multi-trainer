@@ -9,6 +9,7 @@ import { OccupancyChart } from "@/components/analytics/OccupancyChart"
 import { TrainerAttendanceTable } from "@/components/analytics/TrainerAttendanceTable"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
 // Mock Data for Charts (until we wire up full history endpoint)
 const revenueData = [
@@ -90,8 +91,8 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
             <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="revenue" disabled>Revenue Details</TabsTrigger>
-                    <TabsTrigger value="attendance" disabled>Attendance</TabsTrigger>
+                    <TabsTrigger value="revenue">Revenue Details</TabsTrigger>
+                    <TabsTrigger value="attendance">Attendance</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -139,6 +140,30 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
                     <div className="grid gap-4">
                         <OccupancyChart data={occupancyData} />
                     </div>
+                </TabsContent>
+
+                <TabsContent value="revenue" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Detailed Revenue Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[400px]">
+                            <RevenueChart data={revenueData} />
+                            <p className="text-center text-sm text-muted-foreground mt-4">Revenue breakdown by package and trainer is coming soon.</p>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="attendance" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Daily Attendance heatmap</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[400px]">
+                            <OccupancyChart data={occupancyData} />
+                            <p className="text-center text-sm text-muted-foreground mt-4">Peak hours and trainer utilization metrics.</p>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>

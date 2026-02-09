@@ -2,7 +2,7 @@
 const nextConfig = {
     output: 'standalone',
     async rewrites() {
-        const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
+        const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || 'http://localhost:8000';
         console.log('Backend URL for Rewrites:', BACKEND_URL); // Log to see if it loads
         return [
             {

@@ -159,7 +159,7 @@ export default function TrainerProfilePage() {
             }
             updated = [...current, spec];
         }
-        saveProfile({ specializations: updated });
+        setLocalProfile((prev: any) => ({ ...prev, specializations: updated }));
     };
 
     const profile = localProfile || contextProfile;
@@ -179,6 +179,10 @@ export default function TrainerProfilePage() {
                     <p className="text-muted-foreground">Your digital business card & qualifications</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button onClick={() => saveProfile(localProfile)} disabled={saving}>
+                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Changes
+                    </Button>
                     <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
                         {profile.verification_status}
                     </Badge>
@@ -215,11 +219,9 @@ export default function TrainerProfilePage() {
                             <Input
                                 id="bio"
                                 className="mt-1.5"
-                                defaultValue={profile.bio}
+                                value={localProfile?.bio || ""}
                                 placeholder="Tell clients about yourself..."
-                                onBlur={(e) => {
-                                    if (e.target.value !== profile.bio) saveProfile({ bio: e.target.value });
-                                }}
+                                onChange={(e) => setLocalProfile((prev: any) => ({ ...prev, bio: e.target.value }))}
                             />
                         </div>
                     </CardContent>
@@ -233,29 +235,29 @@ export default function TrainerProfilePage() {
                             Specializations
                         </CardTitle>
                         <span className="text-xs text-muted-foreground">
-                            {(profile.specializations?.length || 0)}/5
+                            {(localProfile?.specializations?.length || 0)}/5
                         </span>
                     </CardHeader>
                     <CardContent>
                         <div className="flex flex-wrap gap-2 mb-4">
-                            {profile.specializations?.map((spec: string) => (
-                                <Badge key={spec} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                            {localProfile?.specializations?.map((spec: string) => (
+                                <Badge key={spec} variant="default" className="pl-2 pr-1 py-1 gap-1">
                                     {spec}
                                     <button
                                         onClick={() => toggleSpecialization(spec)}
-                                        className="hover:bg-slate-200 rounded-full p-0.5"
+                                        className="hover:bg-primary-foreground/20 rounded-full p-0.5"
                                     >
-                                        <Trash2 className="w-3 h-3 text-muted-foreground" />
+                                        <Trash2 className="w-3 h-3" />
                                     </button>
                                 </Badge>
                             ))}
-                            {(!profile.specializations?.length) && <span className="text-sm text-muted-foreground italic">Select up to 5 skills below</span>}
+                            {(!localProfile?.specializations?.length) && <span className="text-sm text-muted-foreground italic">Select up to 5 skills below</span>}
                         </div>
 
                         <div className="border-t pt-4">
                             <p className="text-xs font-medium text-muted-foreground mb-3">Add Specialization:</p>
                             <div className="flex flex-wrap gap-2">
-                                {POPULAR_SPECIALIZATIONS.filter(s => !profile.specializations?.includes(s)).map(spec => (
+                                {POPULAR_SPECIALIZATIONS.filter(s => !localProfile?.specializations?.includes(s)).map(spec => (
                                     <button
                                         key={spec}
                                         onClick={() => toggleSpecialization(spec)}

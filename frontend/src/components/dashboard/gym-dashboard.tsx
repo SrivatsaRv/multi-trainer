@@ -34,11 +34,17 @@ export function GymDashboard() {
     useEffect(() => {
         if (profile?.id) {
             fetchAnalytics();
+        } else if (!loading) {
+            // If profile is missing, don't stay in loading forever
+            setLoading(false);
         }
     }, [profile?.id]);
 
     const fetchAnalytics = async () => {
-        if (!profile?.id) return;
+        if (!profile?.id) {
+            setLoading(false);
+            return;
+        }
         try {
             const data = await api.gyms.getAnalytics(profile.id.toString());
             setAnalytics(data);
@@ -59,7 +65,7 @@ export function GymDashboard() {
         }
     };
 
-    if (loading) return <div className="flex justify-center p-12"><Clock className="animate-spin" /></div>;
+    if (loading) return <div className="flex flex-col items-center justify-center p-24 gap-4"><Clock className="animate-spin w-8 h-8 text-primary" /><p className="text-muted-foreground animate-pulse">Loading Facility Dashboard...</p></div>;
 
     const trainerChartData = analytics?.trainer_stats.map((t: any) => ({
         name: t.name,

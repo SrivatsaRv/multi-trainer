@@ -49,16 +49,23 @@ export default function GymTrainersPage() {
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
-        if (!profile?.id) return;
+        if (!profile?.id) {
+            console.log("No profile ID found for gym trainers fetch.");
+            setLoading(false);
+            return;
+        }
+        console.log("Fetching gym trainers and applications for gym:", profile.id);
         try {
             const [trainersData, appsData] = await Promise.all([
                 api.gyms.getTrainers(profile.id.toString()),
                 api.gymApplications.listForGym(profile.id.toString())
             ]);
+            console.log("Fetched data:", { trainersCount: trainersData.length, appsCount: appsData.length });
             setTrainers(trainersData);
             setApplications(appsData);
         } catch (error) {
             console.error("Failed to fetch data", error);
+            toast.error("Failed to load trainer roster");
         } finally {
             setLoading(false);
         }

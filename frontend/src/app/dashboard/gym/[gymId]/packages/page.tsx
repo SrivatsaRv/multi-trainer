@@ -11,8 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Loader2, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 
-export default function GymPackagesPage() {
+export default function GymPackagesPage({ params }: { params: { gymId: string } }) {
     const { profile } = useAuth();
+    const gymId = params.gymId;
     const [packages, setPackages] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -28,9 +29,8 @@ export default function GymPackagesPage() {
 
     useEffect(() => {
         const fetchPackagesInternal = async () => {
-            if (!profile?.id) return;
             try {
-                const data = await api.gyms.getPackages(profile.id.toString());
+                const data = await api.gyms.getPackages(gymId);
                 setPackages(data);
             } catch {
                 toast.error("Failed to fetch packages");
@@ -39,15 +39,12 @@ export default function GymPackagesPage() {
             }
         };
 
-        if (profile?.id) {
-            fetchPackagesInternal();
-        }
-    }, [profile?.id]);
+        fetchPackagesInternal();
+    }, [gymId]);
 
     const fetchPackages = async () => {
-        if (!profile?.id) return;
         try {
-            const data = await api.gyms.getPackages(profile.id.toString());
+            const data = await api.gyms.getPackages(gymId);
             setPackages(data);
         } catch {
             toast.error("Failed to fetch packages");
@@ -58,14 +55,13 @@ export default function GymPackagesPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!profile?.id) return;
         setSaving(true);
         try {
             if (editingPackage) {
-                await api.gyms.updatePackage(profile.id.toString(), editingPackage.id, formData);
+                await api.gyms.updatePackage(gymId, editingPackage.id, formData);
                 toast.success("Package updated");
             } else {
-                await api.gyms.createPackage(profile.id.toString(), formData);
+                await api.gyms.createPackage(gymId, formData);
                 toast.success("Package created");
             }
             setShowForm(false);
@@ -79,10 +75,9 @@ export default function GymPackagesPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!profile?.id) return;
         if (!confirm("Are you sure you want to delete this package?")) return;
         try {
-            await api.gyms.deletePackage(profile.id.toString(), id);
+            await api.gyms.deletePackage(gymId, id);
             toast.success("Package deleted");
             fetchPackages();
         } catch {
@@ -134,8 +129,8 @@ export default function GymPackagesPage() {
                                     <Label>Total Sessions</Label>
                                     <Input
                                         type="number"
-                                        value={formData.session_count}
-                                        onChange={e => setFormData({ ...formData, session_count: parseInt(e.target.value) })}
+                                        value={formData.session_count || ""}
+                                        onChange={e => setFormData({ ...formData, session_count: e.target.value ? parseInt(e.target.value) : 0 })}
                                         required
                                     />
                                 </div>
@@ -143,8 +138,8 @@ export default function GymPackagesPage() {
                                     <Label>Price (INR)</Label>
                                     <Input
                                         type="number"
-                                        value={formData.price_inr}
-                                        onChange={e => setFormData({ ...formData, price_inr: parseInt(e.target.value) })}
+                                        value={formData.price_inr || ""}
+                                        onChange={e => setFormData({ ...formData, price_inr: e.target.value ? parseInt(e.target.value) : 0 })}
                                         required
                                     />
                                 </div>
