@@ -13,7 +13,8 @@ import {
     Shield,
     Clock,
     Building,
-    User
+    User,
+    CreditCard
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
