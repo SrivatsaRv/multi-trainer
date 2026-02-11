@@ -15,7 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { User, Mail, Award, Star, Loader2, Plus, Trash2, Building, MapPin } from "lucide-react";
+import { User, Mail, Award, Star, Loader2, Plus, Trash2, Building, MapPin, Search } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -127,6 +127,7 @@ export default function TrainerProfilePage({ params }: { params: Promise<{ train
             const activeGyms = trainerGyms.filter(g => g.status === 'ACTIVE');
             if (activeGyms.length >= 3) {
                 toast.error("You can only join up to 3 gyms.");
+                setApplying(null); // Reset applying state
                 return;
             }
 
@@ -226,15 +227,19 @@ export default function TrainerProfilePage({ params }: { params: Promise<{ train
                 readOnly={!isOwner}
             />
 
-            {/* Gym Discovery (Footer Section) - Only for Owner */}
-            {isOwner && (
-                <Card className="border-primary/20 shadow-sm overflow-hidden">
-                    <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="text-xl">Gym Associations</CardTitle>
-                                <p className="text-sm text-muted-foreground">Join up to 3 gyms to start training clients.</p>
-                            </div>
+            {/* Gym Associations Section - Public Visibility */}
+            <Card className="border-primary/20 shadow-sm overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle className="text-xl">Gym Associations</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                {isOwner
+                                    ? "Join up to 3 gyms to start training clients."
+                                    : `Gyms where ${profile.user?.full_name || "this trainer"} is currently active.`}
+                            </p>
+                        </div>
+                        {isOwner && (
                             <Button
                                 variant={showJoinFlow ? "secondary" : "default"}
                                 onClick={() => setShowJoinFlow(!showJoinFlow)}
@@ -242,106 +247,129 @@ export default function TrainerProfilePage({ params }: { params: Promise<{ train
                             >
                                 {showJoinFlow ? "View My Gyms" : "Join a Gym"}
                             </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="pt-6">
-                        {!showJoinFlow ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {trainerGyms.map((tg) => (
-                                        <div key={tg.id} className="flex flex-col gap-3 p-4 border rounded-xl bg-card shadow-sm">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0">
-                                                    <Building className="w-5 h-5" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium truncate">{tg.gym.name}</div>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
-                                                            {tg.status}
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                    {!showJoinFlow ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {(isOwner ? trainerGyms : trainerGyms.filter(tg => tg.status === 'ACTIVE')).map((tg) => (
+                                    <div key={tg.id} className="flex flex-col gap-3 p-4 border rounded-xl bg-card shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0">
+                                                <Building className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-medium truncate">{tg.gym.name}</div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                                                        {tg.status}
+                                                    </Badge>
+                                                    {isOwner && tg.is_compliant === false && (
+                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-200 bg-amber-50">
+                                                            Action Required
                                                         </Badge>
-                                                        {tg.is_compliant === false && (
-                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-200 bg-amber-50">
-                                                                Action Required
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t mt-1">
-                                                <span>{tg.accepted_at ? `Joined ${new Date(tg.accepted_at).toLocaleDateString()}` : `Requested ${new Date(tg.requested_at || tg.created_at).toLocaleDateString()}`}</span>
-                                            </div>
                                         </div>
-                                    ))}
-                                    {trainerGyms.length === 0 && (
-                                        <div className="col-span-full text-center py-12">
-                                            <p className="text-muted-foreground mb-4">You are not associated with any gym.</p>
-                                            <Button onClick={() => setShowJoinFlow(true)}>Browse Gyms</Button>
+                                        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t mt-1">
+                                            {tg.status === 'ACTIVE' ? (
+                                                <span>Joined {new Date(tg.accepted_at).toLocaleDateString()}</span>
+                                            ) : (
+                                                <span>Requested {new Date(tg.requested_at || tg.created_at).toLocaleDateString()}</span>
+                                            )}
+                                            {isOwner && tg.status === 'PENDING' && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                                                    onClick={async () => {
+                                                        const app = applications.find(a => a.gym_id === tg.gym_id);
+                                                        if (app) {
+                                                            try {
+                                                                await api.gymApplications.cancel(app.id);
+                                                                setApplications(prev => prev.filter(a => a.id !== app.id));
+                                                                setTrainerGyms(prev => prev.filter(g => g.id !== tg.id));
+                                                                toast.success("Application withdrawn");
+                                                            } catch (e) {
+                                                                toast.error("Failed to withdraw");
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    Withdraw
+                                                </Button>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Pending Applications Section */}
-                                {applications.length > 0 && (
-                                    <div className="mt-8">
-                                        <h4 className="text-sm font-semibold mb-3">Pending Applications</h4>
-                                        <div className="space-y-2">
-                                            {applications.map(app => {
-                                                const gym = allGyms.find(g => g.id === app.gym_id);
-                                                if (!gym || app.status !== 'PENDING') return null;
-                                                return (
-                                                    <div key={app.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
-                                                        <div className="flex items-center gap-3">
-                                                            <ClockLoader className="w-4 h-4 text-orange-500" />
-                                                            <span className="text-sm font-medium">{gym.name}</span>
-                                                        </div>
-                                                        <Badge variant="outline" className="text-orange-600 border-orange-200">Pending Approval</Badge>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
+                                    </div>
+                                ))}
+                                {((isOwner ? trainerGyms : trainerGyms.filter(tg => tg.status === 'ACTIVE')).length === 0) && (
+                                    <div className="col-span-full text-center py-12">
+                                        <p className="text-muted-foreground mb-4">
+                                            {isOwner ? "You are not associated with any gym." : "This trainer is not currently associated with any gym."}
+                                        </p>
+                                        {isOwner && <Button onClick={() => setShowJoinFlow(true)}>Browse Gyms</Button>}
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <Input placeholder="Search gyms..." className="max-w-md" />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {allGyms.filter(g => !isAssociatedWith(g.id)).map((gym) => {
-                                        const appStatus = getApplicationStatus(gym.id);
-                                        const isPending = appStatus === 'PENDING';
-
-                                        return (
-                                            <div key={gym.id} className="flex flex-col p-4 border rounded-xl bg-card hover:shadow-md transition-shadow">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                                        <span className="font-bold text-lg">{gym.name[0]}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="mb-4">
-                                                    <h3 className="font-semibold truncate">{gym.name}</h3>
-                                                    <div className="flex items-center text-xs text-muted-foreground mt-1">
-                                                        <MapPin className="w-3 h-3 mr-1" />
-                                                        {gym.location}
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    className="w-full mt-auto"
-                                                    variant={isPending ? "secondary" : "default"}
-                                                    disabled={isPending || applying === gym.id}
-                                                    onClick={() => !isPending && handleApply(gym.id)}
-                                                >
-                                                    {isPending ? "Pending" : (applying === gym.id ? "Applying..." : "Apply to Join")}
-                                                </Button>
-                                            </div>
-                                        );
-                                    })}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4 max-w-md">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Search gyms..." className="pl-8" />
                                 </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {allGyms.filter(g => !isAssociatedWith(g.id)).map((gym) => {
+                                    const appStatus = getApplicationStatus(gym.id);
+                                    const isPending = appStatus === 'PENDING';
+
+                                    return (
+                                        <div key={gym.id} className="flex flex-col p-4 border rounded-xl bg-card hover:shadow-md transition-shadow group">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <span className="font-bold text-lg">{gym.name[0]}</span>
+                                                </div>
+                                                {gym.verification_status === 'APPROVED' && (
+                                                    <Badge variant="outline" className="text-[10px] text-emerald-600 bg-emerald-50 border-emerald-100">Verified</Badge>
+                                                )}
+                                            </div>
+                                            <div className="mb-4">
+                                                <h3 className="font-semibold truncate">{gym.name}</h3>
+                                                <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                                    <MapPin className="w-3 h-3 mr-1" />
+                                                    {gym.location}
+                                                </div>
+                                                {gym.equipment_list && (
+                                                    <div className="flex flex-wrap gap-1 mt-3">
+                                                        {gym.equipment_list.slice(0, 3).map((eq: string) => (
+                                                            <Badge key={eq} variant="secondary" className="text-[9px] px-1 py-0">{eq}</Badge>
+                                                        ))}
+                                                        {gym.equipment_list.length > 3 && <span className="text-[9px] text-muted-foreground">+{gym.equipment_list.length - 3}</span>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Button
+                                                className="w-full mt-auto"
+                                                variant={isPending ? "secondary" : "default"}
+                                                disabled={isPending || applying === gym.id}
+                                                onClick={() => !isPending && handleApply(gym.id)}
+                                            >
+                                                {isPending ? "Pending" : (applying === gym.id ? "Applying..." : "Apply to Join")}
+                                            </Button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { UserCircle, CheckCircle2, XCircle, Clock } from "lucide-react"
 import Link from "next/link"
 
@@ -25,8 +26,15 @@ export function JoinRequests({ applications, onAction }: JoinRequestsProps) {
                             <div className="space-y-1">
                                 <div className="font-bold">{app.trainer?.user?.full_name || app.trainer?.full_name || "Unknown Trainer"}</div>
                                 <div className="text-sm text-muted-foreground">{app.trainer?.user?.email || app.trainer?.email || "N/A"}</div>
+                                {app.trainer?.specializations && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {app.trainer.specializations.map((spec: string) => (
+                                            <Badge key={spec} variant="outline" className="text-[10px] px-1.5 py-0">{spec}</Badge>
+                                        ))}
+                                    </div>
+                                )}
                                 {app.message && (
-                                    <div className="text-sm bg-background p-2 rounded border italic">
+                                    <div className="text-sm bg-background p-2 rounded border italic mt-2">
                                         "{app.message}"
                                     </div>
                                 )}
