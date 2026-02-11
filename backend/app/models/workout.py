@@ -92,10 +92,12 @@ class WorkoutTemplate(SQLModel, table=True):
     name: str = Field(index=True)
     description: Optional[str] = None
     trainer_id: Optional[int] = Field(default=None, foreign_key="trainer.id")
-    
+
     # Relationships
     trainer: Optional["Trainer"] = Relationship(back_populates="workout_templates")
-    workout_template_exercises: List["WorkoutTemplateExercise"] = Relationship(back_populates="template")
+    workout_template_exercises: List["WorkoutTemplateExercise"] = Relationship(
+        back_populates="template"
+    )
 
 
 class WorkoutTemplateExercise(SQLModel, table=True):
@@ -108,5 +110,7 @@ class WorkoutTemplateExercise(SQLModel, table=True):
     notes: Optional[str] = None
 
     # Relationships
-    template: WorkoutTemplate = Relationship(back_populates="workout_template_exercises")
+    template: WorkoutTemplate = Relationship(
+        back_populates="workout_template_exercises"
+    )
     exercise: Exercise = Relationship()

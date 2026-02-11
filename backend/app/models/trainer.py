@@ -8,12 +8,12 @@ from app.models.associations import GymTrainer
 from app.models.gym import VerificationStatus
 
 if TYPE_CHECKING:
-    from app.models.gym import Gym
-    from app.models.user import User
     from app.models.certificate import Certificate
+    from app.models.gym import Gym
     from app.models.gym_application import GymApplication
-    from app.models.workout_template import WorkoutTemplate
+    from app.models.user import User
     from app.models.workout_log import WorkoutLog
+    from app.models.workout_template import WorkoutTemplate
 
 
 class TrainerBase(SQLModel):
@@ -43,9 +43,6 @@ class Trainer(TrainerBase, table=True):
 class TrainerCreate(BaseModel):
     # Minimal create requirements for friction-less onboarding
     bio: Optional[str] = None
-
-
-
 
 
 class TrainerUpdate(BaseModel):

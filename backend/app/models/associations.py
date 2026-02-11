@@ -1,8 +1,9 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 
@@ -19,8 +20,17 @@ class GymTrainer(SQLModel, table=True):
     gym_id: int = Field(foreign_key="gym.id")
     trainer_id: int = Field(foreign_key="trainer.id")
     status: AssociationStatus = Field(default=AssociationStatus.PENDING)
+    is_compliant: bool = Field(default=False)
+
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+    accepted_at: Optional[datetime] = Field(default=None)
+    left_at: Optional[datetime] = Field(default=None)
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Track all status changes: [{"status": "...", "timestamp": "...", "by": "..."}]
+    history: List[dict] = Field(default=[], sa_column=Column(JSON))
 
     # Relationships are defined in Gym and Trainer models to avoid circular
     # imports?
@@ -45,4 +55,5 @@ class TrainerInviteSchema(BaseModel):
 
 
 class GymTrainerUpdateSchema(BaseModel):
-    status: AssociationStatus
+    status: Optional[AssociationStatus] = None
+    is_compliant: Optional[bool] = None

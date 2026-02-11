@@ -1,12 +1,12 @@
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
-from datetime import datetime
 
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.models.trainer import Trainer
     from app.models.gym import Gym
+    from app.models.trainer import Trainer
 
 
 class ApplicationStatus(str, Enum):

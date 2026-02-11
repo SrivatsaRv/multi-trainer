@@ -5,8 +5,8 @@ from sqlalchemy import JSON, Column
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.trainer import Trainer
+    from app.models.user import User
 
 
 class WorkoutLogBase(SQLModel):
@@ -19,7 +19,7 @@ class WorkoutLog(WorkoutLogBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     client_id: int = Field(foreign_key="user.id")
     trainer_id: int = Field(foreign_key="trainer.id")
-    
+
     # Relationships
     client: "User" = Relationship(back_populates="workout_logs")
     trainer: "Trainer" = Relationship(back_populates="conducted_workouts")

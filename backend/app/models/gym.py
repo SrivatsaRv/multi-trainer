@@ -8,9 +8,9 @@ from sqlmodel import Field, Relationship, SQLModel
 from app.models.associations import GymTrainer
 
 if TYPE_CHECKING:
+    from app.models.gym_application import GymApplication
     from app.models.trainer import Trainer
     from app.models.user import User
-    from app.models.gym_application import GymApplication
 
 
 class VerificationStatus(str, Enum):
@@ -35,6 +35,12 @@ class GymBase(SQLModel):
     business_reg_number: Optional[str] = None
     verification_status: VerificationStatus = VerificationStatus.PENDING
 
+    # Extensions
+    equipment_list: List[str] = Field(default=[], sa_column=Column(JSON))
+    capacity: Optional[int] = None
+    contact_number: Optional[str] = None
+    website: Optional[str] = None
+
 
 class GymCreate(BaseModel):
     name: str
@@ -53,6 +59,10 @@ class GymUpdate(BaseModel):
     social_links: Optional[Dict[str, str]] = None
     business_reg_number: Optional[str] = None
     verification_status: Optional[VerificationStatus] = None
+    equipment_list: Optional[List[str]] = None
+    capacity: Optional[int] = None
+    contact_number: Optional[str] = None
+    website: Optional[str] = None
 
 
 class Gym(GymBase, table=True):
