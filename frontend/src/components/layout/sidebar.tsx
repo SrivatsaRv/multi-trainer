@@ -41,6 +41,11 @@ export function Sidebar({ className }: React.HTMLAttributes<HTMLDivElement>) {
     if (gymId) {
         items = [
             {
+                title: "Overview",
+                href: "/dashboard",
+                icon: LayoutDashboard,
+            },
+            {
                 title: "Analytics",
                 href: `/dashboard/gym/${gymId}/analytics`,
                 icon: LineChart,

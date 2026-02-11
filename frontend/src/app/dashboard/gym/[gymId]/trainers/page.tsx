@@ -27,8 +27,14 @@ import { api } from "@/lib/api"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TrainerRoster } from "@/components/dashboard/trainer-roster"
+import { JoinRequests } from "@/components/dashboard/join-requests"
 
-export default function GymTrainersPage({ params }: { params: { gymId: string } }) {
+import React from "react"
+
+export default function GymTrainersPage({ params }: { params: Promise<{ gymId: string }> }) {
+    const resolvedParams = React.use(params)
+    const gymId = resolvedParams.gymId
     const [roster, setRoster] = useState<any[]>([])
     const [applications, setApplications] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
@@ -37,8 +43,8 @@ export default function GymTrainersPage({ params }: { params: { gymId: string } 
         setLoading(true)
         try {
             const [rosterData, appsData] = await Promise.all([
-                api.gyms.getTrainers(params.gymId),
-                api.gymApplications.listForGym(params.gymId)
+                api.gyms.getTrainers(gymId),
+                api.gymApplications.listForGym(gymId)
             ])
             setRoster(rosterData)
             setApplications(appsData)
@@ -52,7 +58,7 @@ export default function GymTrainersPage({ params }: { params: { gymId: string } 
 
     useEffect(() => {
         fetchTrainers()
-    }, [params.gymId])
+    }, [gymId])
 
     const handleApplication = async (appId: number, status: "APPROVED" | "REJECTED") => {
         try {
@@ -61,6 +67,16 @@ export default function GymTrainersPage({ params }: { params: { gymId: string } 
             fetchTrainers()
         } catch (e) {
             toast.error("Action failed")
+        }
+    }
+
+    const handleTrainerUpdate = async (trainerId: number, data: any) => {
+        try {
+            await api.gyms.updateTrainerStatus(gymId, String(trainerId), data)
+            toast.success("Trainer association updated")
+            fetchTrainers()
+        } catch (e) {
+            toast.error("Failed to update trainer")
         }
     }
 
@@ -105,55 +121,7 @@ export default function GymTrainersPage({ params }: { params: { gymId: string } 
                             <CardDescription>Trainers currently linked to your facility.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Trainer Name</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Linked Date</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {roster.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                                No active trainers in your roster yet.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        roster.map((item) => (
-                                            <TableRow key={item.trainer.id}>
-                                                <TableCell className="font-medium">
-                                                    <div className="flex items-center gap-3">
-                                                        <UserCircle className="w-8 h-8 text-muted-foreground" />
-                                                        <div>
-                                                            <div>{item.trainer.user?.full_name}</div>
-                                                            <div className="text-xs text-muted-foreground">{item.trainer.user?.email}</div>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant={item.status === "ACTIVE" ? "default" : "secondary"}>
-                                                        {item.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">
-                                                    {new Date(item.updated_at || Date.now()).toLocaleDateString()}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={`/dashboard/trainer/${item.trainer.id}/profile`}>
-                                                            <ExternalLink className="w-4 h-4 mr-2" />
-                                                            View Profile
-                                                        </Link>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
+                            <TrainerRoster roster={roster} onUpdate={handleTrainerUpdate} />
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -165,46 +133,7 @@ export default function GymTrainersPage({ params }: { params: { gymId: string } 
                             <CardDescription>Trainers requesting to join your facility.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {applications.length === 0 ? (
-                                    <div className="text-center py-12 border rounded-lg bg-muted/20">
-                                        <Clock className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
-                                        <p className="text-muted-foreground">No pending join requests.</p>
-                                    </div>
-                                ) : (
-                                    applications.map((app) => (
-                                        <div key={app.id} className="flex flex-col md:flex-row border rounded-lg p-4 justify-between gap-4 bg-muted/5">
-                                            <div className="flex gap-4">
-                                                <UserCircle className="w-12 h-12 text-muted-foreground" />
-                                                <div className="space-y-1">
-                                                    <div className="font-bold">{app.trainer.full_name}</div>
-                                                    <div className="text-sm text-muted-foreground">{app.trainer.email}</div>
-                                                    {app.message && (
-                                                        <div className="text-sm bg-background p-2 rounded border italic">
-                                                            "{app.message}"
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 self-end md:self-center">
-                                                <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10" onClick={() => handleApplication(app.id, "REJECTED")}>
-                                                    <XCircle className="w-4 h-4 mr-2" />
-                                                    Reject
-                                                </Button>
-                                                <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleApplication(app.id, "APPROVED")}>
-                                                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                                                    Approve
-                                                </Button>
-                                                <Button variant="ghost" size="sm" asChild>
-                                                    <Link href={`/dashboard/trainer/${app.trainer.id}/profile`}>
-                                                        View Profile
-                                                    </Link>
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                            <JoinRequests applications={applications} onAction={handleApplication} />
                         </CardContent>
                     </Card>
                 </TabsContent>

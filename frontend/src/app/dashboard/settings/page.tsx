@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { TrainerProfileForm } from "@/components/dashboard/trainer-profile-form";
 
 const POPULAR_SPECIALIZATIONS = [
     "Weightlifting", "Yoga", "HIIT", "Nutrition", "Pilates",
@@ -186,27 +187,31 @@ export default function SettingsPage() {
 
                 {/* --- PROFILE TAB --- */}
                 <TabsContent value="profile" className="space-y-6">
-                    <form onSubmit={handleProfileSave} className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <User className="w-5 h-5" />
-                                    {user.role === "TRAINER" ? "Professional Bio" : "Gym Details"}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {user.role === "TRAINER" ? (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="bio">About You</Label>
-                                        <textarea
-                                            id="bio"
-                                            className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            value={localProfile?.bio || ""}
-                                            onChange={(e) => setLocalProfile({ ...localProfile, bio: e.target.value })}
-                                            placeholder="Write something professional to attract clients..."
-                                        />
-                                    </div>
-                                ) : (
+                    {user.role === "TRAINER" && contextProfile ? (
+                        <TrainerProfileForm
+                            trainerId={contextProfile.id}
+                            initialProfile={localProfile}
+                            initialCertificates={certificates}
+                            user={{
+                                full_name: user.full_name,
+                                email: user.email
+                            }}
+                            onUpdate={(updated: any) => {
+                                setLocalProfile(updated);
+                                refreshProfile();
+                            }}
+                            onCertChange={(updatedCerts: any[]) => setCertificates(updatedCerts)}
+                        />
+                    ) : (
+                        <form onSubmit={handleProfileSave} className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Building className="w-5 h-5" />
+                                        Gym Details
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="gymName">Gym Name</Label>
@@ -225,132 +230,16 @@ export default function SettingsPage() {
                                             />
                                         </div>
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {user.role === "TRAINER" && (
-                            <>
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className="flex items-center gap-2">
-                                            <Star className="w-5 h-5 text-amber-500" />
-                                            Specializations
-                                        </CardTitle>
-                                        <span className="text-xs text-muted-foreground">{localProfile?.specializations?.length || 0}/5</span>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="flex flex-wrap gap-2">
-                                            {localProfile?.specializations?.map((spec: string) => (
-                                                <Badge key={spec} variant="default" className="gap-1 px-3 py-1">
-                                                    {spec}
-                                                    <button type="button" onClick={() => toggleSpecialization(spec)}>
-                                                        <Trash2 className="w-3 h-3 hover:text-destructive" />
-                                                    </button>
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                        <div className="pt-4 border-t">
-                                            <Label className="text-xs font-medium text-muted-foreground mb-2 block">Quick Select:</Label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {POPULAR_SPECIALIZATIONS.filter(s => !localProfile?.specializations?.includes(s)).map(spec => (
-                                                    <button
-                                                        key={spec}
-                                                        type="button"
-                                                        onClick={() => toggleSpecialization(spec)}
-                                                        className="text-xs border rounded-full px-3 py-1 hover:bg-primary/5 hover:border-primary transition-colors"
-                                                    >
-                                                        + {spec}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="flex flex-row items-center justify-between">
-                                        <CardTitle className="flex items-center gap-2">
-                                            <Award className="w-5 h-5 text-emerald-500" />
-                                            Certifications
-                                        </CardTitle>
-                                        <Dialog open={isCertDialogOpen} onOpenChange={setIsCertDialogOpen}>
-                                            <DialogTrigger asChild>
-                                                <Button type="button" size="sm" variant="outline">
-                                                    <Plus className="w-4 h-4 mr-1" /> Add
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader>
-                                                    <DialogTitle>Add Certification</DialogTitle>
-                                                    <DialogDescription>Add a new qualification to your profile.</DialogDescription>
-                                                </DialogHeader>
-                                                <div className="space-y-4 py-4">
-                                                    <div className="space-y-2">
-                                                        <Label>Name</Label>
-                                                        <Input
-                                                            value={newCert.name}
-                                                            onChange={e => setNewCert({ ...newCert, name: e.target.value })}
-                                                            placeholder="e.g. NASM CPT"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Issuing Organization</Label>
-                                                        <Input
-                                                            value={newCert.issuing_organization}
-                                                            onChange={e => setNewCert({ ...newCert, issuing_organization: e.target.value })}
-                                                            placeholder="e.g. NASM"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Issue Date</Label>
-                                                        <Input
-                                                            type="date"
-                                                            value={newCert.issue_date}
-                                                            onChange={e => setNewCert({ ...newCert, issue_date: e.target.value })}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <DialogFooter>
-                                                    <Button type="button" onClick={handleAddCert} disabled={saving}>
-                                                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                        Save Certificate
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {certificates.map(cert => (
-                                                <div key={cert.id} className="flex justify-between items-center p-3 border rounded-lg bg-muted/50">
-                                                    <div>
-                                                        <p className="text-sm font-semibold">{cert.name}</p>
-                                                        <p className="text-xs text-muted-foreground">{cert.issuing_organization}</p>
-                                                    </div>
-                                                    <button type="button" onClick={async () => {
-                                                        await api.certificates.delete(cert.id);
-                                                        setCertificates(certificates.filter(c => c.id !== cert.id));
-                                                        toast.success("Certificate removed");
-                                                    }}>
-                                                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {certificates.length === 0 && <p className="text-sm text-center py-4 text-muted-foreground">No certifications added yet.</p>}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </>
-                        )}
-
-                        <div className="flex justify-end">
-                            <Button type="submit" disabled={saving}>
-                                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                Save Profile Changes
-                            </Button>
-                        </div>
-                    </form>
+                                </CardContent>
+                                <div className="p-6 pt-0 flex justify-end">
+                                    <Button type="submit" disabled={saving}>
+                                        {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                        Save Gym Changes
+                                    </Button>
+                                </div>
+                            </Card>
+                        </form>
+                    )}
                 </TabsContent>
 
                 {/* --- ACCOUNT TAB --- */}
@@ -363,7 +252,7 @@ export default function SettingsPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">User Name</Label>
-                                    <p className="font-medium text-lg">{user.full_name}</p>
+                                    <p className="font-medium text-lg">{localProfile?.full_name || localProfile?.name || user.full_name}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Email</Label>
@@ -375,7 +264,12 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Account Status</Label>
-                                    <Badge variant="default" className="bg-emerald-500">Active</Badge>
+                                    <Badge
+                                        variant={contextProfile?.verification_status === 'APPROVED' ? 'default' : 'secondary'}
+                                        className={contextProfile?.verification_status === 'APPROVED' ? "bg-emerald-500" : ""}
+                                    >
+                                        {contextProfile?.verification_status || "ACTIVE"}
+                                    </Badge>
                                 </div>
                             </div>
                         </CardContent>

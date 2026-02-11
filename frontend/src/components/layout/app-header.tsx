@@ -21,6 +21,9 @@ export function AppHeader() {
 
     // Dynamic profile link for quick settings
     const getProfileLink = () => {
+        if (user?.role === "TRAINER" && profile?.id) {
+            return `/dashboard/trainer/${profile.id}/profile`;
+        }
         return "/dashboard/settings";
     };
 

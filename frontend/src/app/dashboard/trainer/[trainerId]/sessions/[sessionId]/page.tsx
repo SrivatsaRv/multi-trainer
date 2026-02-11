@@ -18,6 +18,21 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import dynamic from "next/dynamic";
 
 const ProgressChart = dynamic<{ data: any[]; exerciseName: string }>(
@@ -155,7 +170,7 @@ export default function SessionDetailPage() {
             // Optimistic update
             setSession({ ...session, status: newStatus });
 
-            await api.bookings.updateStatus(trainerId, sessionId, newStatus);
+            await api.bookings.updateStatus(sessionId, newStatus);
             toast.success(`Session marked as ${newStatus}`);
         } catch {
             toast.error("Failed to update status");
@@ -288,16 +303,16 @@ export default function SessionDetailPage() {
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label>Select Template</Label>
-                                    <select
-                                        className="w-full bg-background border rounded-md p-2"
-                                        value={selectedTemplateId}
-                                        onChange={(e) => setSelectedTemplateId(e.target.value)}
-                                    >
-                                        <option value="">Choose a template...</option>
-                                        {templates.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
+                                    <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Choose a template..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {templates.map(t => (
+                                                <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <Button
                                     className="w-full"
@@ -313,10 +328,10 @@ export default function SessionDetailPage() {
                     <Separator orientation="vertical" className="h-8 mx-2" />
 
                     {session.status === 'COMPLETED' ? (
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20">
+                        <Badge variant="outline" className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20 rounded-full">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span className="text-sm font-semibold italic">Session Complete</span>
-                        </div>
+                            <span className="text-sm font-semibold italic uppercase tracking-wider">Session Complete</span>
+                        </Badge>
                     ) : (
                         <div className="flex items-center gap-2">
                             <Button
@@ -416,36 +431,36 @@ export default function SessionDetailPage() {
                                 <CardContent className="p-0">
                                     <div className="grid grid-cols-1 md:grid-cols-2">
                                         <div className="p-6 border-r">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="text-muted-foreground border-b">
-                                                        <th className="text-left pb-2 font-medium">Set</th>
-                                                        <th className="text-left pb-2 font-medium">Reps</th>
-                                                        <th className="text-left pb-2 font-medium">Weight (kg)</th>
-                                                        <th className="pb-2"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-16">Set</TableHead>
+                                                        <TableHead>Reps</TableHead>
+                                                        <TableHead>Weight (kg)</TableHead>
+                                                        <TableHead className="text-right"></TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
                                                     {ex.sets_data.map((set, setIdx) => (
-                                                        <tr key={setIdx} className="border-b last:border-0 group">
-                                                            <td className="py-3 font-mono text-muted-foreground">{set.set_number}</td>
-                                                            <td className="py-3">
-                                                                <input
+                                                        <TableRow key={setIdx} className="group">
+                                                            <TableCell className="font-mono text-muted-foreground">{set.set_number}</TableCell>
+                                                            <TableCell>
+                                                                <Input
                                                                     type="number"
-                                                                    className="bg-transparent border-none focus:ring-0 w-16 text-lg font-semibold"
+                                                                    className="w-20 h-9 font-semibold"
                                                                     value={set.reps}
                                                                     onChange={(e) => updateSet(exIdx, setIdx, 'reps', e.target.value)}
                                                                 />
-                                                            </td>
-                                                            <td className="py-3">
-                                                                <input
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input
                                                                     type="number"
-                                                                    className="bg-transparent border-none focus:ring-0 w-16 text-lg font-semibold"
+                                                                    className="w-20 h-9 font-semibold"
                                                                     value={set.weight_kg}
                                                                     onChange={(e) => updateSet(exIdx, setIdx, 'weight_kg', e.target.value)}
                                                                 />
-                                                            </td>
-                                                            <td className="py-3 text-right">
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="icon"
@@ -454,11 +469,11 @@ export default function SessionDetailPage() {
                                                                 >
                                                                     <Trash2 className="w-4 h-4" />
                                                                 </Button>
-                                                            </td>
-                                                        </tr>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     ))}
-                                                </tbody>
-                                            </table>
+                                                </TableBody>
+                                            </Table>
                                             <Button
                                                 variant="outline"
                                                 size="sm"

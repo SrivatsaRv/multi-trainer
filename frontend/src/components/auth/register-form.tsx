@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,12 +35,6 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
     const router = useRouter();
     const { user, login } = useAuth();
 
-    // Redirect if already authenticated
-    if (user) {
-        router.replace("/dashboard");
-        return null;
-    }
-
     const form = useForm<z.infer<typeof registerSchema>>({
         resolver: zodResolver(registerSchema),
         defaultValues: {
@@ -50,6 +45,17 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
             confirmPassword: "",
         },
     });
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (user) {
+            router.replace("/dashboard");
+        }
+    }, [user, router]);
+
+    if (user) {
+        return null;
+    }
 
     async function onSubmit(values: z.infer<typeof registerSchema>) {
         const { confirmPassword, ...payload } = values;

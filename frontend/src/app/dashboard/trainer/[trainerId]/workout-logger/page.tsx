@@ -21,6 +21,14 @@ import {
     SheetFooter,
     SheetClose
 } from "@/components/ui/sheet";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
@@ -293,58 +301,67 @@ export default function WorkoutLoggerPage() {
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-3">
-                                <div className="grid grid-cols-10 gap-2 mb-2 text-xs font-medium text-muted-foreground text-center">
-                                    <div className="col-span-1">Set</div>
-                                    <div className="col-span-3">kg</div>
-                                    <div className="col-span-3">Reps</div>
-                                    <div className="col-span-2">RPE</div>
-                                    <div className="col-span-1"></div>
-                                </div>
-                                <div className="space-y-2">
-                                    {exercise.sets.map((set, setIndex) => (
-                                        <div key={setIndex} className="grid grid-cols-10 gap-2 items-center">
-                                            <div className="col-span-1 flex justify-center">
-                                                <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-muted-foreground">
-                                                    {setIndex + 1}
-                                                </div>
-                                            </div>
-                                            <div className="col-span-3">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="0"
-                                                    className="h-8 text-center px-1"
-                                                    value={set.weight}
-                                                    onChange={(e) => updateSet(exIndex, setIndex, 'weight', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="col-span-3">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="0"
-                                                    className="h-8 text-center px-1"
-                                                    value={set.reps}
-                                                    onChange={(e) => updateSet(exIndex, setIndex, 'reps', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="-"
-                                                    className="h-8 text-center px-1"
-                                                    value={set.rpe}
-                                                    onChange={(e) => updateSet(exIndex, setIndex, 'rpe', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="col-span-1 flex justify-center">
-                                                {exercise.sets.length > 1 && (
-                                                    <button onClick={() => removeSet(exIndex, setIndex)} className="text-muted-foreground hover:text-destructive">
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-none">
+                                            <TableHead className="w-12 text-center text-xs">Set</TableHead>
+                                            <TableHead className="text-center text-xs">kg</TableHead>
+                                            <TableHead className="text-center text-xs">Reps</TableHead>
+                                            <TableHead className="text-center text-xs">RPE</TableHead>
+                                            <TableHead className="w-8"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {exercise.sets.map((set, setIndex) => (
+                                            <TableRow key={setIndex} className="hover:bg-transparent border-none">
+                                                <TableCell className="py-2 text-center">
+                                                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground mx-auto">
+                                                        {setIndex + 1}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="py-2">
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        className="h-9 text-center px-1"
+                                                        value={set.weight}
+                                                        onChange={(e) => updateSet(exIndex, setIndex, 'weight', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-2">
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        className="h-9 text-center px-1"
+                                                        value={set.reps}
+                                                        onChange={(e) => updateSet(exIndex, setIndex, 'reps', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-2">
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="-"
+                                                        className="h-9 text-center px-1"
+                                                        value={set.rpe}
+                                                        onChange={(e) => updateSet(exIndex, setIndex, 'rpe', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-2 text-center">
+                                                    {exercise.sets.length > 1 && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => removeSet(exIndex, setIndex)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                                 <Button
                                     variant="ghost"
                                     size="sm"

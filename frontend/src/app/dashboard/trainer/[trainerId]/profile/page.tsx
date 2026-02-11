@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { TrainerProfileForm } from "@/components/dashboard/trainer-profile-form";
 
 const POPULAR_SPECIALIZATIONS = [
     "Weightlifting", "Yoga", "HIIT", "Nutrition", "Pilates",
@@ -31,12 +32,15 @@ const POPULAR_CERTS = [
     "ACE CPT", "NASM CPT", "ISSA CPT", "Precision Nutrition L1", "CrossFit L1"
 ];
 
-export default function TrainerProfilePage() {
+import React from "react"
+
+export default function TrainerProfilePage({ params }: { params: Promise<{ trainerId: string }> }) {
+    const resolvedParams = React.use(params)
+    const trainerId = resolvedParams.trainerId
     const { user, profile: contextProfile } = useAuth();
     const router = useRouter();
-    const params = useParams();
     const [localProfile, setLocalProfile] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true)
 
     // Data States
     const [trainerGyms, setTrainerGyms] = useState<any[]>([]);
@@ -58,31 +62,55 @@ export default function TrainerProfilePage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const [prof, gyms, all, certs, apps] = await Promise.all([
-                    api.trainers.get(params.trainerId as string),
-                    api.trainers.getGyms(params.trainerId as string),
+                const isPotentiallyOwner = user?.id && trainerId && (Number(user.id) === Number(trainerId) || user.role === 'SAAS_ADMIN');
+
+                const fetchPromises: Promise<any>[] = [
+                    api.trainers.get(trainerId),
+                    api.trainers.getGyms(trainerId),
                     api.gyms.listAll(),
-                    api.certificates.list(),
-                    api.gymApplications.list()
-                ]);
-                setLocalProfile(prof);
-                setTrainerGyms(gyms);
-                setAllGyms(all);
-                setCertificates(certs);
-                setApplications(apps);
+                ];
+
+                if (isPotentiallyOwner) {
+                    fetchPromises.push(api.certificates.list());
+                    fetchPromises.push(api.gymApplications.list());
+                }
+
+                const results = await Promise.allSettled(fetchPromises);
+
+                const profRes = results[0];
+                const gymsRes = results[1];
+                const allRes = results[2];
+                const certsRes = isPotentiallyOwner ? results[3] : null;
+                const appsRes = isPotentiallyOwner ? results[4] : null;
+
+                if (profRes?.status === 'fulfilled') setLocalProfile(profRes.value);
+                if (gymsRes?.status === 'fulfilled') setTrainerGyms(gymsRes.value);
+                if (allRes?.status === 'fulfilled') setAllGyms(allRes.value);
+
+                if (isPotentiallyOwner) {
+                    if (certsRes?.status === 'fulfilled') setCertificates(certsRes.value);
+                    if (appsRes?.status === 'fulfilled') setApplications(appsRes.value);
+                }
+
+                // Log failures specifically
+                results.forEach((res, i) => {
+                    if (res.status === 'rejected') {
+                        console.error(`Fetch ${i} failed:`, res.reason);
+                    }
+                });
             } catch (err) {
                 console.error("Failed to fetch profile data:", err);
             } finally {
                 setLoading(false);
             }
         }
-        if (params.trainerId) fetchData();
-    }, [params.trainerId]);
+        if (trainerId) fetchData();
+    }, [trainerId, user?.id]);
 
     const saveProfile = async (updates: any) => {
         setSaving(true);
         try {
-            await api.trainers.patch(params.trainerId as string, updates);
+            await api.trainers.patch(trainerId, updates);
             setLocalProfile((prev: any) => ({ ...prev, ...updates }));
             toast.success("Profile updated");
         } catch (err) {
@@ -163,6 +191,7 @@ export default function TrainerProfilePage() {
     };
 
     const profile = localProfile || contextProfile;
+    const isOwner = user?.id && profile?.user_id && (Number(user.id) === Number(profile.user_id) || user.role === 'SAAS_ADMIN');
 
     if (!user || (loading && !profile)) return <div className="flex justify-center p-12 min-h-[50vh] items-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
     if (!profile) return <div className="p-8 text-center text-muted-foreground">Profile not found.</div>;
@@ -178,201 +207,28 @@ export default function TrainerProfilePage() {
                     <h1 className="text-3xl font-bold tracking-tight">Trainer Profile</h1>
                     <p className="text-muted-foreground">Your digital business card & qualifications</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button onClick={() => saveProfile(localProfile)} disabled={saving}>
-                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Changes
-                    </Button>
-                    <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
-                        {profile.verification_status}
-                    </Badge>
-                </div>
+                <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
+                    {profile.verification_status}
+                </Badge>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Main Content Grid via Unified Form */}
+            <TrainerProfileForm
+                trainerId={trainerId}
+                initialProfile={profile}
+                initialCertificates={certificates}
+                user={{
+                    full_name: profile.user?.full_name || "Unknown",
+                    email: profile.user?.email || "N/A"
+                }}
+                onUpdate={(updated: any) => setLocalProfile(updated)}
+                onCertChange={(updatedCerts: any[]) => setCertificates(updatedCerts)}
+                readOnly={!isOwner}
+            />
 
-                {/* 1. Personal Info Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <User className="w-5 h-5 text-primary" />
-                            Personal Info
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center gap-4">
-                            <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold border-2 border-white shadow-sm">
-                                {user.full_name.charAt(0)}
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">{user.full_name}</h3>
-                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Mail className="w-3 h-3" />
-                                    {user.email}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label htmlFor="bio">Bio</Label>
-                            <Input
-                                id="bio"
-                                className="mt-1.5"
-                                value={localProfile?.bio || ""}
-                                placeholder="Tell clients about yourself..."
-                                onChange={(e) => setLocalProfile((prev: any) => ({ ...prev, bio: e.target.value }))}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 2. Specializations Card */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="flex items-center gap-2">
-                            <Star className="w-5 h-5 text-amber-500" />
-                            Specializations
-                        </CardTitle>
-                        <span className="text-xs text-muted-foreground">
-                            {(localProfile?.specializations?.length || 0)}/5
-                        </span>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                            {localProfile?.specializations?.map((spec: string) => (
-                                <Badge key={spec} variant="default" className="pl-2 pr-1 py-1 gap-1">
-                                    {spec}
-                                    <button
-                                        onClick={() => toggleSpecialization(spec)}
-                                        className="hover:bg-primary-foreground/20 rounded-full p-0.5"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </button>
-                                </Badge>
-                            ))}
-                            {(!localProfile?.specializations?.length) && <span className="text-sm text-muted-foreground italic">Select up to 5 skills below</span>}
-                        </div>
-
-                        <div className="border-t pt-4">
-                            <p className="text-xs font-medium text-muted-foreground mb-3">Add Specialization:</p>
-                            <div className="flex flex-wrap gap-2">
-                                {POPULAR_SPECIALIZATIONS.filter(s => !localProfile?.specializations?.includes(s)).map(spec => (
-                                    <button
-                                        key={spec}
-                                        onClick={() => toggleSpecialization(spec)}
-                                        className="text-xs border rounded-full px-3 py-1 hover:bg-primary/5 hover:border-primary transition-colors"
-                                    >
-                                        + {spec}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 3. Certifications Card */}
-                <Card className="col-span-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="flex items-center gap-2">
-                            <Award className="w-5 h-5 text-emerald-500" />
-                            Certifications
-                        </CardTitle>
-                        <Dialog open={isCertDialogOpen} onOpenChange={setIsCertDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="gap-1">
-                                    <Plus className="w-4 h-4" /> Add
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle>Add Certificate</DialogTitle>
-                                    <DialogDescription>
-                                        Verify your expertise with official certifications.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Common Certifications</Label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {POPULAR_CERTS.map(c => (
-                                                <Badge
-                                                    key={c}
-                                                    variant="outline"
-                                                    className="cursor-pointer hover:bg-slate-100"
-                                                    onClick={() => setNewCert({ ...newCert, name: c })}
-                                                >
-                                                    {c}
-                                                </Badge>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="certName">Certificate Name</Label>
-                                        <Input
-                                            id="certName"
-                                            value={newCert.name}
-                                            onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-                                            placeholder="e.g. Advanced Personal Trainer"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="org">Organization</Label>
-                                            <Input
-                                                id="org"
-                                                value={newCert.issuing_organization}
-                                                onChange={(e) => setNewCert({ ...newCert, issuing_organization: e.target.value })}
-                                                placeholder="e.g. ACE"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="date">Issue Date</Label>
-                                            <Input
-                                                id="date"
-                                                type="date"
-                                                value={newCert.issue_date}
-                                                onChange={(e) => setNewCert({ ...newCert, issue_date: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleAddCertificate} disabled={addingCert}>
-                                        {addingCert && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Save Certificate
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {certificates.map((cert) => (
-                                <div key={cert.id} className="flex justify-between items-start p-3 rounded-lg border bg-slate-50 dark:bg-zinc-900">
-                                    <div>
-                                        <p className="font-semibold text-sm">{cert.name}</p>
-                                        <p className="text-xs text-muted-foreground">{cert.issuing_organization} • {new Date(cert.issue_date).getFullYear()}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => handleDeleteCertificate(cert.id)}
-                                        className="text-muted-foreground hover:text-destructive transition-colors"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
-                            {certificates.length === 0 && (
-                                <div className="col-span-full text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
-                                    No certifications added yet.
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 4. Gym Discovery */}
-                <Card className="col-span-full border-primary/20 shadow-sm overflow-hidden">
+            {/* Gym Discovery (Footer Section) - Only for Owner */}
+            {isOwner && (
+                <Card className="border-primary/20 shadow-sm overflow-hidden">
                     <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
                         <div className="flex justify-between items-center">
                             <div>
@@ -393,17 +249,27 @@ export default function TrainerProfilePage() {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {trainerGyms.map((tg) => (
-                                        <div key={tg.id} className="flex items-center gap-3 p-4 border rounded-xl bg-card shadow-sm">
-                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                                                <Building className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium truncate">{tg.gym.name}</div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
-                                                        {tg.status}
-                                                    </Badge>
+                                        <div key={tg.id} className="flex flex-col gap-3 p-4 border rounded-xl bg-card shadow-sm">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary shrink-0">
+                                                    <Building className="w-5 h-5" />
                                                 </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium truncate">{tg.gym.name}</div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <Badge variant={tg.status === 'ACTIVE' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                                                            {tg.status}
+                                                        </Badge>
+                                                        {tg.is_compliant === false && (
+                                                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-amber-600 border-amber-200 bg-amber-50">
+                                                                Action Required
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-2 border-t mt-1">
+                                                <span>{tg.accepted_at ? `Joined ${new Date(tg.accepted_at).toLocaleDateString()}` : `Requested ${new Date(tg.requested_at || tg.created_at).toLocaleDateString()}`}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -475,7 +341,7 @@ export default function TrainerProfilePage() {
                         )}
                     </CardContent>
                 </Card>
-            </div>
+            )}
         </div>
     );
 }

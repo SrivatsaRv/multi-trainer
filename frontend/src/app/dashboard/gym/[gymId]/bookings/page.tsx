@@ -44,31 +44,26 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select"
+import { CreateBookingDialog } from "@/components/dashboard/create-booking-dialog"
 
-export default function GymBookingsPage({ params }: { params: { gymId: string } }) {
+import React from "react"
+
+export default function GymBookingsPage({ params }: { params: Promise<{ gymId: string }> }) {
+    const resolvedParams = React.use(params)
+    const gymId = resolvedParams.gymId
     const [bookings, setBookings] = useState<any[]>([])
     const [trainers, setTrainers] = useState<any[]>([])
     const [clients, setClients] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
 
-    // Create Booking State
-    const [isCreateOpen, setIsCreateOpen] = useState(false)
-    const [newBooking, setNewBooking] = useState({
-        trainer_id: "",
-        user_id: "",
-        date: new Date().toISOString().split('T')[0],
-        time: "10:00",
-        notes: ""
-    })
-
     const fetchData = async () => {
         setLoading(true)
         try {
             const [bookingsData, rosterData, clientsData] = await Promise.all([
-                api.gyms.getBookings(params.gymId),
-                api.gyms.getTrainers(params.gymId),
-                api.gyms.getClients(params.gymId)
+                api.gyms.getBookings(gymId),
+                api.gyms.getTrainers(gymId),
+                api.gyms.getClients(gymId)
             ])
             setBookings(bookingsData)
             setTrainers(rosterData.filter((t: any) => t.status === "ACTIVE"))
@@ -83,29 +78,8 @@ export default function GymBookingsPage({ params }: { params: { gymId: string } 
 
     useEffect(() => {
         fetchData()
-    }, [params.gymId])
+    }, [gymId])
 
-    const handleCreateBooking = async () => {
-        if (!newBooking.trainer_id || !newBooking.user_id || !newBooking.date || !newBooking.time) {
-            toast.error("Please fill in all required fields")
-            return
-        }
-
-        try {
-            const start_time = new Date(`${newBooking.date}T${newBooking.time}:00`).toISOString()
-            await api.bookings.create({
-                trainer_id: parseInt(newBooking.trainer_id),
-                user_id: parseInt(newBooking.user_id),
-                start_time,
-                notes: newBooking.notes
-            })
-            toast.success("Booking created successfully")
-            setIsCreateOpen(false)
-            fetchData()
-        } catch (e: any) {
-            toast.error(e.message || "Failed to create booking")
-        }
-    }
 
     const filteredBookings = bookings.filter(b =>
         b.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -131,87 +105,12 @@ export default function GymBookingsPage({ params }: { params: { gymId: string } 
                     <p className="text-muted-foreground">Monitor and coordinate sessions across all trainers.</p>
                 </div>
 
-                <Dialog open={isCreateOpen} onValueChange={setIsCreateOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-primary">
-                            <Plus className="w-4 h-4 mr-2" />
-                            New Booking
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Create Centralized Booking</DialogTitle>
-                            <DialogDescription>
-                                Schedule a session for any associated trainer and client.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label>Trainer</Label>
-                                <Select onValueChange={(v) => setNewBooking({ ...newBooking, trainer_id: v })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select trainer" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {trainers.map(t => (
-                                            <SelectItem key={t.trainer.id} value={t.trainer.id.toString()}>
-                                                {t.trainer.user?.full_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Client</Label>
-                                <Select onValueChange={(v) => setNewBooking({ ...newBooking, user_id: v })}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select client" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {clients.map(c => (
-                                            <SelectItem key={c.id} value={c.id.toString()}>
-                                                {c.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Date</Label>
-                                    <Input
-                                        type="date"
-                                        value={newBooking.date}
-                                        onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Time</Label>
-                                    <Input
-                                        type="time"
-                                        value={newBooking.time}
-                                        onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Notes (Optional)</Label>
-                                <Input
-                                    placeholder="Special requirements or focus..."
-                                    value={newBooking.notes}
-                                    onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                            <Button onClick={handleCreateBooking}>Schedule Session</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <CreateBookingDialog
+                    gymId={gymId}
+                    trainers={trainers}
+                    clients={clients}
+                    onSuccess={fetchData}
+                />
             </div>
 
             <Card>

@@ -11,27 +11,12 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
-// Mock Data for Charts (until we wire up full history endpoint)
-const revenueData = [
-    { name: "Jan", total: 0 },
-    { name: "Feb", total: 0 },
-    { name: "Mar", total: 0 },
-    { name: "Apr", total: 0 },
-    { name: "May", total: 0 },
-    { name: "Jun", total: 0 },
-]
 
-const occupancyData = [
-    { date: "Mon", occupancy: 0 },
-    { date: "Tue", occupancy: 0 },
-    { date: "Wed", occupancy: 0 },
-    { date: "Thu", occupancy: 0 },
-    { date: "Fri", occupancy: 0 },
-    { date: "Sat", occupancy: 0 },
-    { date: "Sun", occupancy: 0 },
-]
+import React from "react"
 
-export default function GymAnalyticsPage({ params }: { params: { gymId: string } }) {
+export default function GymAnalyticsPage({ params }: { params: Promise<{ gymId: string }> }) {
+    const resolvedParams = React.use(params)
+    const gymId = resolvedParams.gymId
     const [data, setData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
@@ -39,7 +24,7 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
         async function fetchData() {
             try {
                 // Fetch Analytics Overview
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/gyms/${params.gymId}/analytics/overview`, {
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/gyms/${gymId}/analytics/overview`, {
                     headers: {
                         // Authorization header is usually handled by a wrapper or interception, 
                         // but here we need to ensure we are logged in.
@@ -58,14 +43,11 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
                 const headers: any = {}
                 if (token) headers["Authorization"] = `Bearer ${token}`
 
-                const analyticsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/gyms/${params.gymId}/analytics/overview`, { headers })
+                const analyticsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/gyms/${gymId}/analytics/overview`, { headers })
                 const analyticsData = await analyticsRes.json()
 
                 if (analyticsRes.ok) {
                     setData(analyticsData)
-                    // Update chart data driven by API if possible, else match mock structure with totals
-                    revenueData[5].total = analyticsData.revenue // Hacky update for demo
-                    occupancyData[6].occupancy = analyticsData.occupancy_rate
                 }
             } catch (e) {
                 console.error("Failed to fetch analytics", e)
@@ -74,7 +56,7 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
             }
         }
         fetchData()
-    }, [params.gymId])
+    }, [gymId])
 
     if (loading) return <div className="p-8">Loading Analytics...</div>
 
@@ -99,46 +81,48 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <MetricCard
                             title="Total Revenue"
-                            value={`₹${data?.revenue || 0}`}
+                            value={`₹${data?.total_revenue || 0}`}
                             icon={CreditCard}
-                            trend="+20.1% from last month"
+                            trend="Update from sales"
                             trendUp={true}
                         />
                         <MetricCard
-                            title="Active Members"
-                            value={data?.active_members || 0}
+                            title="Active Clients"
+                            value={data?.total_active_clients || 0}
                             icon={Users}
-                            trend="+12 since last week"
+                            trend="Across all plans"
                             trendUp={true}
                         />
                         <MetricCard
                             title="Occupancy Rate"
-                            value={`${data?.occupancy_rate || 0}%`}
+                            value={`${data?.occupancy_rate?.toFixed(1) || 0}%`}
                             icon={Activity}
-                            trend="-4% from last week"
-                            trendUp={false}
+                            trend="Last 30 days"
+                            trendUp={true}
                         />
                         <MetricCard
                             title="Active Trainers"
-                            value="4"
+                            value={data?.trainer_stats?.length || 0}
                             icon={Activity}
-                            trend="Stable"
+                            trend="Verified"
                             trendUp={true}
                         />
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                        <RevenueChart data={revenueData} />
-                        <TrainerAttendanceTable data={[
-                            { id: 1, name: "John Doe", sessions: 45, revenue: 12500, status: "Active" },
-                            { id: 2, name: "Jane Smith", sessions: 32, revenue: 9800, status: "Active" },
-                            { id: 3, name: "Mike Johnson", sessions: 12, revenue: 4200, status: "On Leave" },
-                        ]} />
+                        <RevenueChart data={data?.attendance_trends?.map((t: any) => ({ name: t.date.split('-').slice(1).join('/'), total: t.sessions })) || []} />
+                        <TrainerAttendanceTable data={data?.trainer_stats?.map((t: any) => ({
+                            id: t.trainer_id,
+                            name: t.name,
+                            sessions: t.completed_sessions,
+                            revenue: t.business_value,
+                            status: "Active"
+                        })) || []} />
                     </div>
 
                     {/* Occupancy Full Width */}
                     <div className="grid gap-4">
-                        <OccupancyChart data={occupancyData} />
+                        <OccupancyChart data={data?.attendance_trends?.map((t: any) => ({ date: t.date.split('-').slice(1).join('/'), occupancy: t.sessions })) || []} />
                     </div>
                 </TabsContent>
 
@@ -148,8 +132,8 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
                             <CardTitle>Detailed Revenue Analysis</CardTitle>
                         </CardHeader>
                         <CardContent className="h-[400px]">
-                            <RevenueChart data={revenueData} />
-                            <p className="text-center text-sm text-muted-foreground mt-4">Revenue breakdown by package and trainer is coming soon.</p>
+                            <RevenueChart data={data?.attendance_trends?.map((t: any) => ({ name: t.date, total: t.sessions })) || []} />
+                            <p className="text-center text-sm text-muted-foreground mt-4">Session volume over the last 30 days.</p>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -160,8 +144,8 @@ export default function GymAnalyticsPage({ params }: { params: { gymId: string }
                             <CardTitle>Daily Attendance heatmap</CardTitle>
                         </CardHeader>
                         <CardContent className="h-[400px]">
-                            <OccupancyChart data={occupancyData} />
-                            <p className="text-center text-sm text-muted-foreground mt-4">Peak hours and trainer utilization metrics.</p>
+                            <OccupancyChart data={data?.attendance_trends?.map((t: any) => ({ date: t.date, occupancy: t.sessions })) || []} />
+                            <p className="text-center text-sm text-muted-foreground mt-4">Daily session activity trends.</p>
                         </CardContent>
                     </Card>
                 </TabsContent>
