@@ -37,6 +37,7 @@ PERSONAS = [
 
 from sqlalchemy import text
 
+
 def seed_personas():
     with Session(engine) as session:
         for role_str, email, status in PERSONAS:
@@ -47,30 +48,79 @@ def seed_personas():
                 uid = existing.id
                 # 1.1 Find Gym and Trainer IDs
                 gid = session.exec(select(Gym.id).where(Gym.admin_id == uid)).first()
-                tid = session.exec(select(Trainer.id).where(Trainer.user_id == uid)).first()
-                
+                tid = session.exec(
+                    select(Trainer.id).where(Trainer.user_id == uid)
+                ).first()
+
                 # 1.2 Delete by Trainer ID
                 if tid:
-                    session.execute(text("DELETE FROM workoutset WHERE session_exercise_id IN (SELECT id FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE trainer_id = :tid))"), {"tid": tid})
-                    session.execute(text("DELETE FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE trainer_id = :tid)"), {"tid": tid})
-                    session.execute(text("DELETE FROM booking WHERE trainer_id = :tid"), {"tid": tid})
-                    session.execute(text("DELETE FROM gymtrainer WHERE trainer_id = :tid"), {"tid": tid})
-                    session.execute(text("DELETE FROM clienttrainer WHERE trainer_id = :tid"), {"tid": tid})
-                    session.execute(text("DELETE FROM trainer WHERE id = :tid"), {"tid": tid})
+                    session.execute(
+                        text(
+                            "DELETE FROM workoutset WHERE session_exercise_id IN (SELECT id FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE trainer_id = :tid))"
+                        ),
+                        {"tid": tid},
+                    )
+                    session.execute(
+                        text(
+                            "DELETE FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE trainer_id = :tid)"
+                        ),
+                        {"tid": tid},
+                    )
+                    session.execute(
+                        text("DELETE FROM booking WHERE trainer_id = :tid"),
+                        {"tid": tid},
+                    )
+                    session.execute(
+                        text("DELETE FROM gymtrainer WHERE trainer_id = :tid"),
+                        {"tid": tid},
+                    )
+                    session.execute(
+                        text("DELETE FROM clienttrainer WHERE trainer_id = :tid"),
+                        {"tid": tid},
+                    )
+                    session.execute(
+                        text("DELETE FROM trainer WHERE id = :tid"), {"tid": tid}
+                    )
 
                 # 1.3 Delete by Gym ID
                 if gid:
-                    session.execute(text("DELETE FROM workoutset WHERE session_exercise_id IN (SELECT id FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE gym_id = :gid))"), {"gid": gid})
-                    session.execute(text("DELETE FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE gym_id = :gid)"), {"gid": gid})
-                    session.execute(text("DELETE FROM booking WHERE gym_id = :gid"), {"gid": gid})
-                    session.execute(text("DELETE FROM clientsubscription WHERE gym_id = :gid"), {"gid": gid})
-                    session.execute(text("DELETE FROM sessionpackage WHERE gym_id = :gid"), {"gid": gid})
-                    session.execute(text("DELETE FROM gymtrainer WHERE gym_id = :gid"), {"gid": gid})
-                    session.execute(text("DELETE FROM gym WHERE id = :gid"), {"gid": gid})
+                    session.execute(
+                        text(
+                            "DELETE FROM workoutset WHERE session_exercise_id IN (SELECT id FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE gym_id = :gid))"
+                        ),
+                        {"gid": gid},
+                    )
+                    session.execute(
+                        text(
+                            "DELETE FROM workoutsessionexercise WHERE booking_id IN (SELECT id FROM booking WHERE gym_id = :gid)"
+                        ),
+                        {"gid": gid},
+                    )
+                    session.execute(
+                        text("DELETE FROM booking WHERE gym_id = :gid"), {"gid": gid}
+                    )
+                    session.execute(
+                        text("DELETE FROM clientsubscription WHERE gym_id = :gid"),
+                        {"gid": gid},
+                    )
+                    session.execute(
+                        text("DELETE FROM sessionpackage WHERE gym_id = :gid"),
+                        {"gid": gid},
+                    )
+                    session.execute(
+                        text("DELETE FROM gymtrainer WHERE gym_id = :gid"), {"gid": gid}
+                    )
+                    session.execute(
+                        text("DELETE FROM gym WHERE id = :gid"), {"gid": gid}
+                    )
 
                 # 1.4 Delete User and Sessions
-                session.execute(text("DELETE FROM user_sessions WHERE user_id = :uid"), {"uid": uid})
-                session.execute(text("DELETE FROM \"user\" WHERE id = :uid"), {"uid": uid})
+                session.execute(
+                    text("DELETE FROM user_sessions WHERE user_id = :uid"), {"uid": uid}
+                )
+                session.execute(
+                    text('DELETE FROM "user" WHERE id = :uid'), {"uid": uid}
+                )
                 session.commit()
 
             # 2. Create User

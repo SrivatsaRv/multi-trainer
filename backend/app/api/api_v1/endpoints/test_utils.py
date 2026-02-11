@@ -29,19 +29,30 @@ def purge_test_user(
         return {"status": "not_found"}
 
     from sqlalchemy import text
+
     # 1. Clear sessions first to avoid IntegrityError
-    session.execute(text("DELETE FROM user_sessions WHERE user_id = :uid"), {"uid": user.id})
+    session.execute(
+        text("DELETE FROM user_sessions WHERE user_id = :uid"), {"uid": user.id}
+    )
 
     # 2. Cascade delete profiles & associations
     if user.gym:
         gid = user.gym.id
-        session.execute(text("DELETE FROM clientsubscription WHERE gym_id = :gid"), {"gid": gid})
-        session.execute(text("DELETE FROM sessionpackage WHERE gym_id = :gid"), {"gid": gid})
-        session.execute(text("DELETE FROM gymtrainer WHERE gym_id = :gid"), {"gid": gid})
+        session.execute(
+            text("DELETE FROM clientsubscription WHERE gym_id = :gid"), {"gid": gid}
+        )
+        session.execute(
+            text("DELETE FROM sessionpackage WHERE gym_id = :gid"), {"gid": gid}
+        )
+        session.execute(
+            text("DELETE FROM gymtrainer WHERE gym_id = :gid"), {"gid": gid}
+        )
         session.delete(user.gym)
     if user.trainer:
         tid = user.trainer.id
-        session.execute(text("DELETE FROM gymtrainer WHERE trainer_id = :tid"), {"tid": tid})
+        session.execute(
+            text("DELETE FROM gymtrainer WHERE trainer_id = :tid"), {"tid": tid}
+        )
         session.delete(user.trainer)
 
     session.delete(user)

@@ -1,11 +1,12 @@
-from typing import Any, List
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
-from app.models.certificate import Certificate, CertificateCreate, CertificateUpdate
+from app.models.certificate import (Certificate, CertificateCreate,
+                                    CertificateUpdate)
 from app.models.trainer import Trainer
 from app.models.user import User
 
@@ -20,7 +21,9 @@ def read_certificates(
     """
     Retrieve certificates for the current trainer.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 
@@ -36,7 +39,9 @@ def create_certificate(
     """
     Add a new certificate to the trainer profile.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 
@@ -57,7 +62,9 @@ def update_certificate(
     """
     Update a certificate.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 
@@ -86,7 +93,9 @@ def delete_certificate(
     """
     Delete a certificate.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 

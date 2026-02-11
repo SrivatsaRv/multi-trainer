@@ -7,12 +7,9 @@ from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
 from app.models.associations import AssociationStatus, GymTrainer
 from app.models.gym import Gym
-from app.models.gym_application import (
-    ApplicationStatus,
-    GymApplication,
-    GymApplicationCreate,
-    GymApplicationUpdate,
-)
+from app.models.gym_application import (ApplicationStatus, GymApplication,
+                                        GymApplicationCreate,
+                                        GymApplicationUpdate)
 from app.models.trainer import Trainer
 from app.models.user import User
 
@@ -27,7 +24,9 @@ def read_applications(
     """
     Retrieve applications for the current trainer.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 
@@ -43,7 +42,9 @@ def create_application(
     """
     Submit a new application to a gym.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
 
@@ -54,9 +55,11 @@ def create_application(
             GymTrainer.status == AssociationStatus.ACTIVE,
         )
     ).all()
-    
+
     if len(active_gyms_count) >= 3:
-         raise HTTPException(status_code=400, detail="Maximum of 3 active gym associations allowed.")
+        raise HTTPException(
+            status_code=400, detail="Maximum of 3 active gym associations allowed."
+        )
 
     # Check if already applied or associated
     existing_app = session.exec(
@@ -67,8 +70,10 @@ def create_application(
         )
     ).first()
     if existing_app:
-        raise HTTPException(status_code=400, detail="Pending application already exists")
-    
+        raise HTTPException(
+            status_code=400, detail="Pending application already exists"
+        )
+
     existing_assoc = session.exec(
         select(GymTrainer).where(
             GymTrainer.trainer_id == trainer.id,
@@ -76,12 +81,9 @@ def create_application(
         )
     ).first()
     if existing_assoc:
-         raise HTTPException(status_code=400, detail="Already associated with this gym")
+        raise HTTPException(status_code=400, detail="Already associated with this gym")
 
-
-    application = GymApplication(
-        **application_in.model_dump(), trainer_id=trainer.id
-    )
+    application = GymApplication(**application_in.model_dump(), trainer_id=trainer.id)
     session.add(application)
     session.commit()
     session.refresh(application)
@@ -97,18 +99,22 @@ def cancel_application(
     """
     Cancel a pending application.
     """
-    trainer = session.exec(select(Trainer).where(Trainer.user_id == current_user.id)).first()
+    trainer = session.exec(
+        select(Trainer).where(Trainer.user_id == current_user.id)
+    ).first()
     if not trainer:
-         raise HTTPException(status_code=404, detail="Trainer profile not found")
+        raise HTTPException(status_code=404, detail="Trainer profile not found")
 
     application = session.get(GymApplication, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
     if application.trainer_id != trainer.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     if application.status != ApplicationStatus.PENDING:
-         raise HTTPException(status_code=400, detail="Can only cancel pending applications")
+        raise HTTPException(
+            status_code=400, detail="Can only cancel pending applications"
+        )
 
     session.delete(application)
     session.commit()
@@ -129,7 +135,7 @@ def read_gym_applications(
     gym = session.get(Gym, gym_id)
     if not gym:
         raise HTTPException(status_code=404, detail="Gym not found")
-    
+
     if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -149,25 +155,29 @@ def read_gym_applications(
 
     response = []
     for app, trainer, user in results:
-        response.append({
-            "id": app.id,
-            "status": app.status,
-            "created_at": app.created_at,
-            "message": app.message,
-            "trainer": {
-                "id": trainer.id,
-                "full_name": user.full_name,
-                "email": user.email,
-                "bio": trainer.bio,
+        response.append(
+            {
+                "id": app.id,
+                "status": app.status,
+                "created_at": app.created_at,
+                "message": app.message,
+                "trainer": {
+                    "id": trainer.id,
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "bio": trainer.bio,
+                },
             }
-        })
-    
+        )
+
     return response
 
+
 # Gym-side endpoints could go here or in gyms.py
-# For now keeping it trainer-centric as per folder name, 
+# For now keeping it trainer-centric as per folder name,
 # but approvals need to be done by Gym Admins.
 # Let's add an approval endpoint here protected by Gym Admin check.
+
 
 @router.put("/{application_id}/status", response_model=GymApplication)
 def update_application_status(
@@ -182,11 +192,11 @@ def update_application_status(
     application = session.get(GymApplication, application_id)
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
-    
+
     gym = session.get(Gym, application.gym_id)
     if not gym:
         raise HTTPException(status_code=404, detail="Gym not found")
-    
+
     if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -195,10 +205,10 @@ def update_application_status(
         new_assoc = GymTrainer(
             gym_id=gym.id,
             trainer_id=application.trainer_id,
-            status=AssociationStatus.ACTIVE
+            status=AssociationStatus.ACTIVE,
         )
         session.add(new_assoc)
-    
+
     application.status = status_update.status
     session.add(application)
     session.commit()

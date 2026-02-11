@@ -268,9 +268,12 @@ def read_gym_bookings(
     return results
 
 
-@router.get("/{gym_id}/clients", response_model=List[Any])
+@router.get("/{gym_id}/clients", response_model=Any)
 def read_gym_clients(
     gym_id: int,
+    skip: int = 0,
+    limit: int = 25,
+    search: Optional[str] = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -282,18 +285,36 @@ def read_gym_clients(
     if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    from sqlalchemy import func, or_
+
     from app.models.subscription import ClientSubscription, SubscriptionStatus
     from app.models.user import User as UserModel
 
     # Select users who have an active subscription at this gym
-    statement = (
+    base_query = (
         select(UserModel, ClientSubscription)
         .join(ClientSubscription, UserModel.id == ClientSubscription.user_id)
         .where(ClientSubscription.gym_id == gym_id)
         .where(ClientSubscription.status == SubscriptionStatus.ACTIVE)
     )
 
-    results = session.exec(statement).all()
+    if search:
+        search_filter = or_(
+            UserModel.full_name.ilike(f"%{search}%"),
+            UserModel.email.ilike(f"%{search}%"),
+        )
+        # Try numeric search for ID
+        if search.isdigit():
+            search_filter = or_(search_filter, UserModel.id == int(search))
+
+        base_query = base_query.where(search_filter)
+
+    # Get total count
+    count_statement = select(func.count()).select_from(base_query.subquery())
+    total = session.exec(count_statement).one()
+
+    # Get paginated results
+    results = session.exec(base_query.offset(skip).limit(limit)).all()
 
     formatted_results = []
     for user, sub in results:
@@ -310,9 +331,7 @@ def read_gym_clients(
             }
         )
 
-    return formatted_results
-
-
+    return {"items": formatted_results, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/{gym_id}/packages", response_model=List[Any])
@@ -414,10 +433,12 @@ def delete_gym_package(
 def update_trainer_association_status(
     gym_id: int,
     trainer_id: int,
-    status_update: dict,  # expect {"status": "ACTIVE" | "REJECTED"}
+    update_data: dict,  # expect {"status": "ACTIVE", "is_compliant": true}
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    from datetime import datetime
+
     from app.models.associations import AssociationStatus, GymTrainer
 
     gym = session.get(Gym, gym_id)
@@ -437,14 +458,49 @@ def update_trainer_association_status(
     if not link:
         raise HTTPException(status_code=404, detail="Association not found")
 
-    new_status = status_update.get("status")
+    # Process status change
+    new_status = update_data.get("status")
     if new_status and hasattr(AssociationStatus, new_status):
-        link.status = new_status
-        session.add(link)
-        session.commit()
-        session.refresh(link)
+        if link.status != new_status:
+            # Handle timestamps
+            if new_status == AssociationStatus.ACTIVE and not link.accepted_at:
+                link.accepted_at = datetime.utcnow()
+            elif new_status == AssociationStatus.TERMINATED:
+                link.left_at = datetime.utcnow()
+
+            # Record history
+            history_entry = {
+                "old_status": link.status,
+                "new_status": new_status,
+                "timestamp": datetime.utcnow().isoformat(),
+                "updated_by": current_user.id,
+            }
+            link.history = (link.history or []) + [history_entry]
+            link.status = new_status
+
+    # Process compliance change
+    if "is_compliant" in update_data:
+        new_compliance = update_data["is_compliant"]
+        if link.is_compliant != new_compliance:
+            history_entry = {
+                "field": "is_compliant",
+                "old_value": link.is_compliant,
+                "new_value": new_compliance,
+                "timestamp": datetime.utcnow().isoformat(),
+                "updated_by": current_user.id,
+            }
+            link.history = (link.history or []) + [history_entry]
+            link.is_compliant = new_compliance
+
+    link.updated_at = datetime.utcnow()
+    session.add(link)
+    session.commit()
+    session.refresh(link)
 
     return {
-        "message": f"Trainer status updated to {link.status}",
+        "message": "Trainer association updated",
         "status": link.status,
+        "is_compliant": link.is_compliant,
+        "accepted_at": link.accepted_at,
+        "left_at": link.left_at,
     }

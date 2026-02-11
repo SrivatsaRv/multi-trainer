@@ -10,14 +10,10 @@ sys.path.append(os.getcwd())
 
 from app.models.booking import Booking, SessionPackage  # noqa: E402
 from app.models.gym import Gym  # noqa: E402
-from app.models.certificate import Certificate  # noqa: E402
-from app.models.gym_application import GymApplication  # noqa: E402
 from app.models.session import UserSession  # noqa: E402
 from app.models.subscription import ClientSubscription  # noqa: E402
 from app.models.trainer import Trainer  # noqa: E402
 from app.models.user import User  # noqa: E402
-from app.models.workout import WorkoutTemplate  # noqa: E402
-from app.models.workout_log import WorkoutLog  # noqa: E402
 
 # Situation Report Script
 # Shows system health and database statistics.
@@ -61,9 +57,7 @@ def get_db_stats():
 
 def check_health():
     try:
-        response = requests.get(
-            "http://localhost:8000/health", timeout=2
-        )
+        response = requests.get("http://localhost:8000/health", timeout=2)
         return response.status_code == 200
     except Exception:
         return False

@@ -94,6 +94,29 @@ def update_trainer(
     return trainer
 
 
+@router.patch("/{trainer_id}", response_model=Trainer)
+def patch_trainer(
+    trainer_id: int,
+    trainer_in: TrainerUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    trainer = session.get(Trainer, trainer_id)
+    if not trainer:
+        raise HTTPException(status_code=404, detail="Trainer not found")
+    if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    trainer_data = trainer_in.model_dump(exclude_unset=True)
+    for key, value in trainer_data.items():
+        setattr(trainer, key, value)
+
+    session.add(trainer)
+    session.commit()
+    session.refresh(trainer)
+    return trainer
+
+
 @router.delete("/{trainer_id}", status_code=status.HTTP_200_OK)
 def delete_trainer(
     trainer_id: int,
@@ -185,7 +208,10 @@ def read_trainer_gyms(
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
-    if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
+    if trainer.user_id != current_user.id and current_user.role not in [
+        "SAAS_ADMIN",
+        "GYM_ADMIN",
+    ]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     from app.models.associations import GymTrainer
@@ -201,7 +227,8 @@ def read_trainer_gyms(
         if gym:
             results.append(
                 {
-                    "gym": gym,  # Gym model is safe to return fully for now
+                    "id": link.id,
+                    "gym": gym,
                     "status": link.status,
                     "updated_at": link.updated_at,
                 }

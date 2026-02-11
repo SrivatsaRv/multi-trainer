@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, func, select
 
 from app.api.api_v1 import deps as deps
@@ -18,7 +18,8 @@ def get_gym_analytics_overview(
     current_user: User = Depends(deps.get_current_user),
 ):
     """
-    Detailed analytics for a gym, including revenue, attendance trends, and trainer performance.
+    Detailed analytics for a gym, including revenue, attendance trends, and
+    trainer performance.
     """
     gym = session.get(Gym, gym_id)
     if not gym:
@@ -26,11 +27,10 @@ def get_gym_analytics_overview(
     if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    from app.models.booking import BookingStatus, SessionPackage
+    from app.models.associations import AssociationStatus, GymTrainer
     from app.models.subscription import ClientSubscription
     from app.models.trainer import Trainer
     from app.models.user import User as UserModel
-    from app.models.associations import AssociationStatus, GymTrainer
 
     # 1. Total Revenue (Sales)
     revenue_statement = (
@@ -91,7 +91,9 @@ def get_gym_analytics_overview(
         )
 
     total_sessions_count = sum(t["sessions"] for t in attendance_trends)
-    occupancy_rate = (total_sessions_count / 360.0) * 100 if total_sessions_count else 0.0
+    occupancy_rate = (
+        (total_sessions_count / 360.0) * 100 if total_sessions_count else 0.0
+    )
 
     return {
         "total_revenue": total_revenue,
