@@ -1,4 +1,6 @@
-const API_URL = '/api/v1';
+const API_URL = typeof window !== 'undefined'
+    ? '/api/v1'
+    : (process.env.BACKEND_INTERNAL_URL || 'http://backend:8000') + '/api/v1';
 
 export async function fetcher(endpoint: string, options: RequestInit = {}) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -10,24 +12,40 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers,
-    });
+    const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${API_URL}${path}`;
 
-    if (!response.ok) {
-        // Try to parse error message
-        let errorMsg = response.statusText;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.detail || errorMsg;
-        } catch (e) {
-            // ignore
+    // Debugging: track which URLs fail
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers,
+        });
+
+        if (!response.ok) {
+            let errorMsg = response.statusText;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.detail || errorMsg;
+            } catch (e) { /* ignore */ }
+
+            // Handle Managed Session Revocation (Tier 3)
+            if (errorMsg === 'SESSION_EXPIRED' && typeof window !== 'undefined') {
+                console.warn('Session expired. Redirecting to login...');
+                // Use a direct redirect to avoid infinite loops and clear state
+                window.location.href = '/auth/login?message=session_expired';
+                return;
+            }
+
+            console.error(`API Error [${response.status}] ${url}:`, errorMsg);
+            throw new Error(errorMsg);
         }
-        throw new Error(errorMsg);
-    }
 
-    return response.json();
+        return response.json();
+    } catch (err) {
+        console.error(`Fetch Failure ${url}:`, err);
+        throw err;
+    }
 }
 
 const fetchWithAuth = fetcher;
@@ -85,15 +103,23 @@ export const api = {
         listAll: () => fetcher('/gyms/'),
         create: (data: any) => fetcher('/gyms/', { method: 'POST', body: JSON.stringify(data) }),
         get: (id: string) => fetcher(`/gyms/${id}`),
-        getTrainers: (gymId: string) => fetcher(`/gyms/${gymId}/trainers`),
-        inviteTrainer: (gymId: string, email: string) => fetcher(`/gyms/${gymId}/trainers/invite`, { method: 'POST', body: JSON.stringify({ email }) }),
+        getTrainers: (gymId: string) => fetcher(`/gyms/${gymId}/trainers/`),
+        inviteTrainer: (gymId: string, email: string) => fetcher(`/gyms/${gymId}/trainers/invite/`, { method: 'POST', body: JSON.stringify({ email }) }),
         updateTrainerStatus: (gymId: string, trainerId: string, status: string) => fetcher(`/gyms/${gymId}/trainers/${trainerId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-        getPackages: (gymId: string) => fetcher(`/gyms/${gymId}/packages`),
-        createPackage: (gymId: string, data: any) => fetcher(`/gyms/${gymId}/packages`, { method: 'POST', body: JSON.stringify(data) }),
-        updatePackage: (gymId: string, packageId: number, data: any) => fetcher(`/gyms/${gymId}/packages/${packageId}`, { method: 'PUT', body: JSON.stringify(data) }),
-        deletePackage: (gymId: string, packageId: number) => fetcher(`/gyms/${gymId}/packages/${packageId}`, { method: 'DELETE' }),
+        getPackages: (gymId: string) => fetcher(`/gyms/${gymId}/packages/`),
+        createPackage: (gymId: string, data: any) => fetcher(`/gyms/${gymId}/packages/`, { method: 'POST', body: JSON.stringify(data) }),
+        updatePackage: (gymId: string, pkgId: number, data: any) => fetcher(`/gyms/${gymId}/packages/${pkgId}`, { method: 'PUT', body: JSON.stringify(data) }),
+        deletePackage: (gymId: string, pkgId: number) => fetcher(`/gyms/${gymId}/packages/${pkgId}`, { method: 'DELETE' }),
         getAnalytics: (gymId: string) => fetcher(`/gyms/${gymId}/analytics/overview`),
-        getClients: (gymId: string) => fetcher(`/gyms/${gymId}/clients`),
+        getClients: (gymId: string, skip: number = 0, limit: number = 25, search?: string) => {
+            const params = new URLSearchParams({
+                skip: skip.toString(),
+                limit: limit.toString(),
+                ...(search && { search })
+            });
+            return fetcher(`/gyms/${gymId}/clients?${params.toString()}`);
+        },
+        getBookings: (gymId: string) => fetcher(`/gyms/${gymId}/bookings/`),
     },
     trainers: {
         list: () => fetcher('/trainers/'),
@@ -109,10 +135,11 @@ export const api = {
         getClient: (trainerId: string, clientId: string) => fetcher(`/trainers/${trainerId}/clients/${clientId}`),
         getClientAnalytics: (trainerId: string, clientId: string) => fetcher(`/trainers/${trainerId}/clients/${clientId}/analytics/overview`),
         getBookings: (trainerId: string) => fetcher(`/trainers/${trainerId}/bookings`),
+        getAnalytics: (trainerId: string) => fetcher(`/trainers/${trainerId}/analytics`),
     },
     bookings: {
         create: (data: any) => fetchWithAuth(`/bookings`, { method: 'POST', body: JSON.stringify(data) }),
-        updateStatus: (trainerId: string, bookingId: string, status: string) => fetcher(`/bookings/${bookingId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+        updateStatus: (bookingId: string, status: string) => fetcher(`/bookings/${bookingId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
         log: (sessionId: string, data: any) => fetcher(`/bookings/${sessionId}/log`, { method: 'POST', body: JSON.stringify({ logs: data }) }),
     },
     templates: {
@@ -123,23 +150,23 @@ export const api = {
         me: () => fetcher('/users/me'),
     },
     admin: {
-        listVerifications: () => fetcher('/admin/verifications'),
+        listVerifications: () => fetcher('/admin/verifications/'),
         approveGym: (id: number) => fetcher(`/admin/verifications/gym/${id}/approve`, { method: 'POST' }),
         rejectGym: (id: number) => fetcher(`/admin/verifications/gym/${id}/reject`, { method: 'POST' }),
         approveTrainer: (id: number) => fetcher(`/admin/verifications/trainer/${id}/approve`, { method: 'POST' }),
         rejectTrainer: (id: number) => fetcher(`/admin/verifications/trainer/${id}/reject`, { method: 'POST' }),
     },
     certificates: {
-        list: () => fetchWithAuth(`/certificates`),
-        create: (data: any) => fetchWithAuth(`/certificates`, { method: 'POST', body: JSON.stringify(data) }),
+        list: () => fetchWithAuth(`/certificates/`),
+        create: (data: any) => fetchWithAuth(`/certificates/`, { method: 'POST', body: JSON.stringify(data) }),
         update: (id: number, data: any) => fetchWithAuth(`/certificates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
         delete: (id: number) => fetchWithAuth(`/certificates/${id}`, { method: 'DELETE' }),
     },
     gymApplications: {
         list: () => fetchWithAuth(`/gym-applications/`),
-        listForGym: (gymId: string) => fetchWithAuth(`/gym-applications/gym/${gymId}`),
+        listForGym: (gymId: string) => fetchWithAuth(`/gym-applications/gym/${gymId}/`),
         create: (gymId: number, message?: string) => fetchWithAuth(`/gym-applications/`, { method: 'POST', body: JSON.stringify({ gym_id: gymId, message }) }),
-        cancel: (id: number) => fetchWithAuth(`/gym-applications/${id}`, { method: 'DELETE' }),
+        cancel: (id: number) => fetchWithAuth(`/gym-applications/${id}`),
         updateStatus: (id: number, status: "APPROVED" | "REJECTED") => fetchWithAuth(`/gym-applications/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
     },
     workouts: {

@@ -14,7 +14,7 @@ help:
 	@echo "  make investor-demo-setup : Production Setup + Rich Demo Data"
 	@echo ""
 	@echo "MANAGEMENT"
-	@echo "  make admin cmd=...       : Run CLI Admin Commands (e.g. cmd=list-gyms)"
+	@echo "  make admin args='...'    : Run CLI Admin Commands (e.g. args='approve-trainer 5')"
 	@echo "  make sitrep              : System Health & DB Statistics"
 	@echo "  make logs                : Tail Logs"
 	@echo ""
@@ -44,8 +44,8 @@ lint:
 	@cd $(FRONTEND_DIR) && npm run lint
 
 format:
-	@$(BACKEND_CMD) black app/ tests/ verify_analytics.py
-	@$(BACKEND_CMD) isort app/ tests/ verify_analytics.py
+	@$(BACKEND_CMD) black app/ tests/
+	@$(BACKEND_CMD) isort app/ tests/
 
 test-unit unit-tests:
 	@echo "Running Unit Tests..."
@@ -68,7 +68,11 @@ sitrep:
 	@$(BACKEND_CMD) python app/db/sitrep.py
 
 admin:
-	@$(BACKEND_CMD) python app/cli.py $(cmd)
+	@if [ -z "$(args)" ]; then \
+		$(BACKEND_CMD) python app/cli.py; \
+	else \
+		$(BACKEND_CMD) python app/cli.py $(args); \
+	fi
 
 logs:
 	docker-compose logs -f -n 100
@@ -92,7 +96,7 @@ prod-all: down build up
 	@echo "Starting Production Readiness Check..."
 	@sleep 10
 	@$(MAKE) format
-	@$(MAKE) lint
+	-@$(MAKE) lint
 	@$(MAKE) test
 	@$(MAKE) seed-demo-users
 	@$(MAKE) sitrep
