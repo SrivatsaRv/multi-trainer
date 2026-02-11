@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -5,9 +6,6 @@ from app.models.gym import Gym
 from app.models.trainer import Trainer
 from app.models.user import User, UserRole
 from tests.test_constants import TEST_USER_PASSWORD
-
-
-import pytest
 
 
 @pytest.mark.integration
@@ -53,7 +51,7 @@ def test_gym_trainer_invite_flow(client: TestClient, session: Session):
     # 3. Setup Gym Profile (Gym Admin) - Update auto-created one
     me = client.get("/api/v1/users/me", headers=gym_headers).json()
     gym_id = me["gym"]["id"]
-    
+
     gym_payload = {
         "name": "Association Test Gym",
         "slug": "assoc-gym",
@@ -65,9 +63,11 @@ def test_gym_trainer_invite_flow(client: TestClient, session: Session):
     # 4. Setup Trainer Profile (Trainer) - Update auto-created one
     me_tr = client.get("/api/v1/users/me", headers=trainer_headers).json()
     trainer_id = me_tr["trainer"]["id"]
-    
+
     trainer_payload = {"bio": "Ready for association."}
-    r = client.put(f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=trainer_headers)
+    r = client.put(
+        f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=trainer_headers
+    )
     assert r.status_code == 200
     trainer_user_data = client.get("/api/v1/users/me", headers=trainer_headers).json()
     # Handle dict vs list for trainer object if needed, but in API response it should be dict
@@ -149,11 +149,15 @@ def test_trainer_apply_flow(client: TestClient, session: Session):
     )
     tr_token = r.json()["access_token"]
     tr_headers = {"Authorization": f"Bearer {tr_token}"}
- 
+
     # Setup Trainer Profile
     me_tr = client.get("/api/v1/users/me", headers=tr_headers).json()
     trainer_id = me_tr["trainer"]["id"]
-    client.put(f"/api/v1/trainers/{trainer_id}", json={"bio": "Applying..."}, headers=tr_headers)
+    client.put(
+        f"/api/v1/trainers/{trainer_id}",
+        json={"bio": "Applying..."},
+        headers=tr_headers,
+    )
 
     # 3. Trainer Applies to Gym
     # POST /trainers/{trainer_id}/gyms?gym_id={gym_id} or body?

@@ -1,9 +1,9 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.models.gym import Gym, VerificationStatus
 from tests.test_constants import TEST_USER_PASSWORD
-import pytest
 
 
 @pytest.mark.integration
@@ -35,7 +35,7 @@ def test_gym_crud_lifecycle(client: TestClient, session: Session):
     # 2. Get and UPDATE auto-created Gym
     me = client.get("/api/v1/users/me", headers=headers).json()
     gym_id = me["gym"]["id"]
-    
+
     gym_payload = {
         "name": "CRUD Gym",
         "slug": "crud-gym",

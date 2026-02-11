@@ -165,3 +165,32 @@ def test_trainer_onboarding_isolation(
         headers=headers,
     )
     assert response.status_code == 403
+
+
+def test_gym_admin_cannot_patch_trainer_profile(
+    client: TestClient, gym_admin_a, trainer_a
+):
+    # Gym Admin A tries to edit Trainer A's profile
+    token_admin = get_token(client, gym_admin_a[1].email)
+    headers = {"Authorization": f"Bearer {token_admin}"}
+
+    payload = {"bio": "Hacked by Admin"}
+    response = client.patch(
+        f"/api/v1/trainers/{trainer_a[0].id}", json=payload, headers=headers
+    )
+
+    assert response.status_code == 403
+    assert "Not authorized" in response.text
+
+
+def test_cross_trainer_patch_protection(client: TestClient, trainer_a, trainer_b):
+    # Trainer A tries to edit Trainer B's profile
+    token_a = get_token(client, trainer_a[1].email)
+    headers = {"Authorization": f"Bearer {token_a}"}
+
+    payload = {"bio": "Hacked by Trainer A"}
+    response = client.patch(
+        f"/api/v1/trainers/{trainer_b[0].id}", json=payload, headers=headers
+    )
+
+    assert response.status_code == 403

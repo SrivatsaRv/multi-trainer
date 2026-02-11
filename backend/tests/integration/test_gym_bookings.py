@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -8,7 +9,6 @@ from app.models.gym import Gym
 from app.models.trainer import Trainer
 from app.models.user import User, UserRole
 from tests.test_constants import TEST_USER_PASSWORD
-import pytest
 
 
 @pytest.mark.integration

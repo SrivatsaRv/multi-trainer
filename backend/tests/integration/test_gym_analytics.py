@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.models.booking import Booking, BookingStatus, SessionPackage
 from app.models.gym import Gym
 from tests.test_constants import TEST_USER_PASSWORD
-
-
-import pytest
 
 
 @pytest.mark.integration
@@ -83,8 +81,9 @@ def test_get_gym_analytics_overview(client: TestClient, session: Session, test_u
 
     # Create a subscription for the client user (Revenue source)
     from app.models.subscription import ClientSubscription, SubscriptionStatus
+
     sub = ClientSubscription(
-        user_id=trainer_user.id, # Using trainer_user as proxy client for simplicity
+        user_id=trainer_user.id,  # Using trainer_user as proxy client for simplicity
         gym_id=gym.id,
         session_package_id=pkg.id,
         total_sessions=pkg.session_count,

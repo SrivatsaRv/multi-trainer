@@ -1,9 +1,9 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.models.trainer import Trainer, VerificationStatus
 from tests.test_constants import TEST_USER_PASSWORD
-import pytest
 
 
 @pytest.mark.integration
@@ -35,12 +35,14 @@ def test_trainer_crud_lifecycle(client: TestClient, session: Session):
     # 2. Get and UPDATE auto-created Trainer Profile
     me = client.get("/api/v1/users/me", headers=headers).json()
     trainer_id = me["trainer"]["id"]
-    
+
     trainer_payload = {
         "bio": "Expert in CRUD operations.",
         "specializations": ["Testing", "Optimization"],
     }
-    r = client.put(f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=headers)
+    r = client.put(
+        f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=headers
+    )
     assert r.status_code == 200
     t_data = r.json()
     # Note: Response might not include ID directly if wrapped or depending on schema, let's check

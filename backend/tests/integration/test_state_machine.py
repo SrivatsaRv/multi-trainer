@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -5,7 +6,6 @@ from app.models.gym import Gym, VerificationStatus
 from app.models.trainer import Trainer
 from app.models.user import User
 from tests.test_constants import TEST_USER_PASSWORD
-import pytest
 
 
 @pytest.mark.integration
@@ -40,7 +40,7 @@ def test_gym_lifecycle_draft_state(client: TestClient, session: Session):
     # We can just fetch me to get the ID
     me = client.get("/api/v1/users/me", headers=headers).json()
     gym_id = me["gym"]["id"]
-    
+
     gym_payload = {
         "name": "Integration Gym",
         "slug": "int-gym",
@@ -51,7 +51,7 @@ def test_gym_lifecycle_draft_state(client: TestClient, session: Session):
     data = r.json()
     assert data["name"] == "Integration Gym"
     assert data["verification_status"] == "PENDING"
-    
+
     # 4. Verify DB State via Client
     r = client.get(f"/api/v1/gyms/{gym_id}", headers=headers)
     assert r.status_code == 200
@@ -84,9 +84,11 @@ def test_trainer_lifecycle_draft_state(client: TestClient, session: Session):
     # 3. Create Trainer (Frictionless) - Update auto-created profile
     me = client.get("/api/v1/users/me", headers=headers).json()
     trainer_id = me["trainer"]["id"]
-    
+
     trainer_payload = {"bio": "I am an integration test trainer."}
-    r = client.put(f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=headers)
+    r = client.put(
+        f"/api/v1/trainers/{trainer_id}", json=trainer_payload, headers=headers
+    )
     assert r.status_code == 200
     data = r.json()
     assert data["bio"] == "I am an integration test trainer."
