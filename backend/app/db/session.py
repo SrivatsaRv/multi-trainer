@@ -17,7 +17,18 @@ engine = create_engine(settings.DATABASE_URL, echo=True)
 
 
 def init_db():
+    import os
+
+    from sqlalchemy import text
+
     SQLModel.metadata.create_all(engine)
+
+    # Optional: Clear sessions on start for forced logout during rebuilds
+    if os.getenv("CLEAR_SESSIONS_ON_START") == "true":
+        with Session(engine) as session:
+            session.execute(text("DELETE FROM user_sessions"))
+            session.commit()
+            print("INFO: Cleared all user sessions (CLEAR_SESSIONS_ON_START=true)")
 
 
 def get_session():

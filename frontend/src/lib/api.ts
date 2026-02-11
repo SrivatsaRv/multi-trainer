@@ -1,3 +1,5 @@
+import { signOut } from "next-auth/react";
+
 const API_URL = typeof window !== 'undefined'
     ? '/api/v1'
     : (process.env.BACKEND_INTERNAL_URL || 'http://backend:8000') + '/api/v1';
@@ -31,9 +33,11 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
 
             // Handle Managed Session Revocation (Tier 3)
             if (errorMsg === 'SESSION_EXPIRED' && typeof window !== 'undefined') {
-                console.warn('Session expired. Redirecting to login...');
-                // Use a direct redirect to avoid infinite loops and clear state
-                window.location.href = '/auth/login?message=session_expired';
+                console.warn('Session expired. Initiating standardized logout via signOut()...');
+                signOut({
+                    callbackUrl: '/auth/login?message=session_expired',
+                    redirect: true
+                });
                 return;
             }
 
@@ -53,35 +57,11 @@ const fetchWithAuth = fetcher;
 
 export const api = {
     // Generic methods
-    get: async (endpoint: string, token?: string | null) => {
-        const headers: any = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${API_URL}${endpoint}`, { headers });
-        if (!res.ok) throw new Error("API Error");
-        return res.json();
-    },
-    post: async (endpoint: string, data: any, token?: string | null) => {
-        const headers: any = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${API_URL}${endpoint}`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("API Error");
-        return res.json();
-    },
-    patch: async (endpoint: string, data: any, token?: string | null) => {
-        const headers: any = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`${API_URL}${endpoint}`, {
-            method: "PATCH",
-            headers,
-            body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("API Error");
-        return res.json();
-    },
+    get: (endpoint: string) => fetcher(endpoint, { method: 'GET' }),
+    post: (endpoint: string, data: any) => fetcher(endpoint, { method: 'POST', body: JSON.stringify(data) }),
+    patch: (endpoint: string, data: any) => fetcher(endpoint, { method: 'PATCH', body: JSON.stringify(data) }),
+    put: (endpoint: string, data: any) => fetcher(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (endpoint: string) => fetcher(endpoint, { method: 'DELETE' }),
     // Domain specific
     auth: {
         register: (data: any) => fetcher('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
@@ -105,7 +85,7 @@ export const api = {
         get: (id: string) => fetcher(`/gyms/${id}`),
         getTrainers: (gymId: string) => fetcher(`/gyms/${gymId}/trainers/`),
         inviteTrainer: (gymId: string, email: string) => fetcher(`/gyms/${gymId}/trainers/invite/`, { method: 'POST', body: JSON.stringify({ email }) }),
-        updateTrainerStatus: (gymId: string, trainerId: string, status: string) => fetcher(`/gyms/${gymId}/trainers/${trainerId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+        updateTrainerStatus: (gymId: string, trainerId: string, data: any) => fetcher(`/gyms/${gymId}/trainers/${trainerId}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
         getPackages: (gymId: string) => fetcher(`/gyms/${gymId}/packages/`),
         createPackage: (gymId: string, data: any) => fetcher(`/gyms/${gymId}/packages/`, { method: 'POST', body: JSON.stringify(data) }),
         updatePackage: (gymId: string, pkgId: number, data: any) => fetcher(`/gyms/${gymId}/packages/${pkgId}`, { method: 'PUT', body: JSON.stringify(data) }),
