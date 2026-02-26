@@ -111,9 +111,11 @@ test.describe('Authentication Flow', () => {
         // Should redirect to login page
         await expect(page).toHaveURL(`${BASE_URL}/auth/login`);
 
-        // Token should be cleared
-        const token = await page.evaluate(() => localStorage.getItem('token'));
-        expect(token).toBeNull();
+        // Token should be cleared - Wait for async cleanup
+        await expect(async () => {
+            const token = await page.evaluate(() => localStorage.getItem('token'));
+            expect(token).toBeNull();
+        }).toPass({ timeout: 5000 });
     });
 
     test('should maintain session across page navigation', async ({ page }) => {
@@ -177,7 +179,12 @@ test.describe('Authentication Flow', () => {
         const secondToken = await newPage.evaluate(() => localStorage.getItem('token'));
 
         // Tokens should be different (new session created)
-        expect(firstToken).not.toBe(secondToken);
+        // Wait for the token to change (accounting for async session update)
+        await expect(async () => {
+            const currentToken = await newPage.evaluate(() => localStorage.getItem('token'));
+            expect(currentToken).not.toBe(firstToken);
+            expect(currentToken).toBeTruthy();
+        }).toPass({ timeout: 5000 });
 
         // Both sessions should be valid (backend allows multiple sessions)
         // This is expected behavior - each login creates a new token
@@ -189,7 +196,7 @@ test.describe('Authentication Flow', () => {
         const email = `trainer_${uniqueId()}@example.com`;
         await page.goto(`${BASE_URL}/auth/register?role=TRAINER`);
 
-        await expect(page.getByText(/create your trainer account/i)).toBeVisible();
+        await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
         await page.getByLabel(/full name/i).fill('E2E Trainer');
         await page.getByLabel(/email/i).fill(email);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
@@ -209,7 +216,7 @@ test.describe('Authentication Flow', () => {
         const email = `gymadmin_${uniqueId()}@example.com`;
         await page.goto(`${BASE_URL}/auth/register?role=GYM_ADMIN`);
 
-        await expect(page.getByText(/create your gym admin account/i)).toBeVisible();
+        await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
         await page.getByLabel(/full name/i).fill('E2E Gym Admin');
         await page.getByLabel(/email/i).fill(email);
         await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);

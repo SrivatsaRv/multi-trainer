@@ -70,24 +70,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Sync session with local state
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading" || (status === "authenticated" && user)) return;
 
     if (status === "authenticated" && session?.user) {
       const accessToken = (session.user as any).accessToken;
+      const isAuthPage = pathname.startsWith("/auth");
 
       if (accessToken) {
         setAuthToken(accessToken);
         setToken(accessToken);
 
-        // Fetch full user details if needed, or trust session
-        // We trust session for id/role, but might need full profile for verification_status
+        // If we are on an auth page, and we just had a session error, 
+        // don't immediately try to fetch /me again.
+        if (isAuthPage && pathname.includes("session_expired")) {
+          setLoading(false);
+          return;
+        }
+
         api.users.me().then(data => {
           setUser(data.user);
           setProfile(data.gym || data.trainer);
           setLoading(false);
         }).catch(err => {
           console.error("Failed to fetch user details", err);
+          // If 401, the fetcher will calling signOut(), 
+          // but we should stop loading here.
           setLoading(false);
+          setUser(null);
         });
       } else {
         setLoading(false);
@@ -99,22 +108,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearAuthToken();
       setLoading(false);
     }
-  }, [session, status]);
+  }, [session, status, pathname, user]);
 
 
   // Route protection logic
   useEffect(() => {
     if (loading || status === "loading") return;
 
-    const isAuthPage = pathname.startsWith("/auth");
-    const isPublicPage = pathname === "/" || isAuthPage;
+    // Isolate pure auth entry pages, distinct from /auth/onboarding
+    const isAuthEntryPage = pathname === "/auth/login" || pathname === "/auth/register";
+    // Define base public access rules (handles password resets, etc later)
+    const isPublicPage = pathname === "/" || pathname.startsWith("/auth");
     const isProtectedPage = !isPublicPage;
 
     if (user) {
-      if (isAuthPage || pathname === "/") {
+      if (isAuthEntryPage || pathname === "/") {
         router.replace("/dashboard");
       }
-    } else if (isProtectedPage && !isAuthPage) {
+    } else if (isProtectedPage) {
       router.replace("/auth/login");
     }
   }, [user, loading, status, pathname, router]);

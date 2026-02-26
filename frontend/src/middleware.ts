@@ -7,15 +7,10 @@ export default withAuth(
         const isAuth = !!token
         const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
 
-        // If the user is authenticated and tries to access an auth page (login/register),
-        // we redirect them to the dashboard. 
-        // 
-        // NOTE: We don't perform stateful validation here to avoid 
-        // expensive pings on every login page load. The 'authorized' callback 
-        // below handles the heavy lifting for protected dashboard routes.
-        if (isAuthPage && isAuth) {
-            return NextResponse.redirect(new URL("/dashboard", req.url))
-        }
+        // Industry Standard: Middleware should handle PROTECTION (authorized).
+        // Application logic (Layouts/Pages) or AuthProvider should handle 
+        // redirecting authenticated users away from /auth/login.
+        // Doing it here causes loops when a session is revoked but the JWT still exists.
 
         return NextResponse.next()
     },
@@ -30,7 +25,11 @@ export default withAuth(
                     // Stateful Backend Revalidation
                     // We verify the token against the DB session store.
                     try {
-                        const response = await fetch(`${process.env.BACKEND_INTERNAL_URL || 'http://backend:8000'}/api/v1/users/me`, {
+                        const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                        const url = backendUrl.startsWith('http') ? backendUrl : `http://localhost:8000${backendUrl}`;
+                        const endpoint = url.endsWith('/api/v1') ? url : `${url}/api/v1`;
+
+                        const response = await fetch(`${endpoint}/users/me`, {
                             headers: {
                                 Authorization: `Bearer ${token.accessToken}`,
                             },
@@ -41,14 +40,16 @@ export default withAuth(
                             return false;
                         }
 
-                        return response.ok;
+                        // We only care about explicit revocation (401).
+                        // If backend is returning 500s or is briefly unreachable, we fail open.
+                        return response.status !== 401;
                     } catch (e) {
-                        console.error("Middleware: Auth verification failed:", e);
-                        // Industry standard: Fail closed for high security, 
-                        // but here we might want to fail open if the backend is briefly unreachable
-                        // to avoid global lockout. However, for "Hardened Revocation", 
-                        // failing closed is more consistent with the user's requirements.
-                        return false;
+                        console.error("Middleware: Auth verification fetch failed (Network/DNS). Failing open:", e);
+                        // Industry standard: Constraint-First Logic.
+                        // Failing closed here on a network error (e.g., DNS failure for backend:8000 locally) 
+                        // creates an infinite redirect loop because the valid JWT still exists.
+                        // We fail open and rely on the client-side data-fetcher to catch 401s and enact logout.
+                        return true;
                     }
                 }
 

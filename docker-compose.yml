@@ -28,7 +28,8 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=/api/v1
       - BACKEND_INTERNAL_URL=http://backend:8000
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      # Omit NEXTAUTH_URL so NextAuth infers the dynamic host from the request header in dev mode.
+      # - NEXTAUTH_URL=${NEXTAUTH_URL} 
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
     command: sh -c "npm install && npm run dev"
     depends_on:
