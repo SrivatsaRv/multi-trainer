@@ -118,8 +118,6 @@ def cancel_application(
 
     session.delete(application)
     session.commit()
-    session.delete(application)
-    session.commit()
     return {"message": "Application cancelled"}
 
 

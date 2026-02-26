@@ -8,9 +8,35 @@ from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
 from app.models.gym import Gym
 from app.models.trainer import Trainer
-from app.models.user import User
+from app.models.user import User, UserUpdate
 
 router = APIRouter()
+
+
+@router.patch("/me", response_model=Any)
+def patch_user_me(
+    user_in: UserUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Update details for the current user.
+    """
+    from app.core.security import get_password_hash
+
+    user_data = user_in.model_dump(exclude_unset=True)
+    if "password" in user_data:
+        password = user_data.pop("password")
+        current_user.hashed_password = get_password_hash(password)
+
+    for key, value in user_data.items():
+        setattr(current_user, key, value)
+
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    return {"message": "User updated", "user": current_user}
 
 
 @router.get("/me", response_model=Any)

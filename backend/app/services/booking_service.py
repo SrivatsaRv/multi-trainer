@@ -128,3 +128,73 @@ class BookingService:
         session.commit()
         session.refresh(booking)
         return booking
+    @staticmethod
+    def update_booking_status(
+        session: Session,
+        booking_id: int,
+        new_status: BookingStatus,
+        user: User,
+    ) -> Booking:
+        """
+        Update booking status and handle credit adjustments.
+        - COMPLETED, NO_SHOW, ATTENDED: Keep credit deducted.
+        - CANCELLED: Refund credit.
+        """
+        booking = session.get(Booking, booking_id)
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+
+        # Authz check
+        trainer = session.get(Trainer, booking.trainer_id)
+        is_trainer = trainer and trainer.user_id == user.id
+        is_client = booking.user_id == user.id
+        is_admin = user.role == "SAAS_ADMIN"
+
+        if not (is_trainer or is_client or is_admin):
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        old_status = booking.status
+        if old_status == new_status:
+            return booking
+
+        # Credit Adjustment Logic
+        # Proactive model: Credits are deducted at SCHEDULED creation.
+        
+        # If moving TO Cancelled from a 'deducted' state, refund.
+        deducted_states = [
+            BookingStatus.SCHEDULED,
+            BookingStatus.ATTENDED,
+            BookingStatus.COMPLETED,
+            BookingStatus.NO_SHOW,
+        ]
+
+        if new_status == BookingStatus.CANCELLED and old_status in deducted_states:
+            subscription = session.exec(
+                select(ClientSubscription)
+                .where(ClientSubscription.user_id == booking.user_id)
+                .where(ClientSubscription.status == SubscriptionStatus.ACTIVE)
+            ).first()
+            if subscription:
+                subscription.sessions_used = max(0, subscription.sessions_used - 1)
+                session.add(subscription)
+
+        # If moving FROM Cancelled to a 'deducted' state, re-deduct.
+        elif old_status == BookingStatus.CANCELLED and new_status in deducted_states:
+            subscription = session.exec(
+                select(ClientSubscription)
+                .where(ClientSubscription.user_id == booking.user_id)
+                .where(ClientSubscription.status == SubscriptionStatus.ACTIVE)
+            ).first()
+            if subscription:
+                if subscription.sessions_used >= subscription.total_sessions:
+                    raise HTTPException(
+                        status_code=400, detail="Subscription credits exhausted."
+                    )
+                subscription.sessions_used += 1
+                session.add(subscription)
+
+        booking.status = new_status
+        session.add(booking)
+        session.commit()
+        session.refresh(booking)
+        return booking

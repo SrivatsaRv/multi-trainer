@@ -7,9 +7,13 @@ from sqlmodel import Session, select
 
 from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
-from app.models.booking import Booking, BookingStatus  # noqa: F401
+from app.models.associations import AssociationStatus, ClientTrainer, GymTrainer  # noqa: F401
+from app.models.booking import Booking, BookingStatus, SessionPackage  # noqa: F401
+from app.models.gym import Gym  # noqa: F401
+from app.models.subscription import ClientSubscription, SubscriptionStatus  # noqa: F401
 from app.models.trainer import Trainer, TrainerCreate, TrainerUpdate
-from app.models.user import User
+from app.models.user import User as UserModel, UserRole
+from app.models.workout import Exercise, WorkoutSessionExercise, WorkoutSet  # noqa: F401
 
 
 class ClientOnboardSchema(BaseModel):
@@ -37,7 +41,7 @@ def read_trainers(
 def create_trainer(
     trainer_in: TrainerCreate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     # Check if trainer profile exists
     existing_trainer = session.exec(
@@ -76,7 +80,7 @@ def update_trainer(
     trainer_id: int,
     trainer_in: TrainerUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -99,7 +103,7 @@ def patch_trainer(
     trainer_id: int,
     trainer_in: TrainerUpdate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -121,7 +125,7 @@ def patch_trainer(
 def delete_trainer(
     trainer_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -137,7 +141,7 @@ def delete_trainer(
 def get_trainer_analytics(
     trainer_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -153,8 +157,6 @@ def get_trainer_analytics(
         select(Booking).where(Booking.trainer_id == trainer_id)
     ).all()
 
-    from app.models.associations import ClientTrainer
-
     clients_from_assoc = session.exec(
         select(ClientTrainer.client_id).where(ClientTrainer.trainer_id == trainer_id)
     ).all()
@@ -162,10 +164,10 @@ def get_trainer_analytics(
 
     unique_clients = set(list(clients_from_assoc) + clients_from_bookings)
 
-    completed = [b for b in bookings if b.status == BookingStatus.COMPLETED]
+    completed = [b for b in bookings if b.status in [BookingStatus.COMPLETED, BookingStatus.ATTENDED]]
     upcoming = [b for b in bookings if b.status == BookingStatus.SCHEDULED]
 
-    # Simple earnings logic: 500 INR per completed session
+    # Simple earnings logic: 500 INR per completed or attended session
     earnings = len(completed) * 500
 
     # Chart Data: Group by Month
@@ -203,7 +205,7 @@ def get_trainer_analytics(
 def read_trainer_gyms(
     trainer_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -213,9 +215,6 @@ def read_trainer_gyms(
         "GYM_ADMIN",
     ]:
         raise HTTPException(status_code=403, detail="Not authorized")
-
-    from app.models.associations import GymTrainer
-    from app.models.gym import Gym
 
     links = session.exec(
         select(GymTrainer).where(GymTrainer.trainer_id == trainer_id)
@@ -241,12 +240,9 @@ def apply_to_gym(
     trainer_id: int,
     gym_id: int,  # Payload could be just gym_id or an object
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     # Dynamic import
-    from app.models.associations import AssociationStatus, GymTrainer
-    from app.models.gym import Gym
-
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
@@ -281,17 +277,13 @@ def apply_to_gym(
 def read_trainer_bookings(
     trainer_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
     if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
-
-    from app.models.booking import Booking
-    from app.models.gym import Gym
-    from app.models.user import User as UserModel
 
     # Aliases for clarity (though not strictly needed if models are distinct)
     # Join Booking -> Gym
@@ -307,7 +299,6 @@ def read_trainer_bookings(
 
     # Get active subscriptions for these clients to show usage (e.g. 7/12)
     # Optimization: Fetch all active subs for these users
-    from app.models.subscription import ClientSubscription, SubscriptionStatus
 
     user_ids = [b.user_id for b, g, u in bookings if b.user_id]
     subs = session.exec(
@@ -348,18 +339,13 @@ def read_trainer_session_detail(
     trainer_id: int,
     session_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
     if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
-
-    from app.models.booking import Booking
-    from app.models.gym import Gym
-    from app.models.user import User as UserModel
-    from app.models.workout import Exercise, WorkoutSessionExercise
 
     # Fetch booking with Gym and Client
     result = session.exec(
@@ -381,8 +367,6 @@ def read_trainer_session_detail(
         .join(Exercise, WorkoutSessionExercise.exercise_id == Exercise.id)
         .where(WorkoutSessionExercise.booking_id == session_id)
     ).all()
-
-    from app.models.workout import WorkoutSet
 
     formatted_exercises = []
     for workout_exercise, exercise_def in exercises:
@@ -430,7 +414,7 @@ def update_session_status(
     session_id: int,
     status_update: dict,  # expect {"status": "COMPLETED" | "NO_SHOW"}
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -460,7 +444,7 @@ def read_exercise_history(
     exercise_id: int,
     client_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -469,7 +453,6 @@ def read_exercise_history(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # from app.models.booking import Booking, BookingStatus (already at top)
-    from app.models.workout import WorkoutSessionExercise
 
     # Query: Get all completed sessions for this client containing this exercise
     results = session.exec(
@@ -519,7 +502,7 @@ def read_exercise_history(
 def read_trainer_clients(
     trainer_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -528,11 +511,6 @@ def read_trainer_clients(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     from sqlalchemy import func
-
-    from app.models.associations import ClientTrainer
-    from app.models.booking import Booking
-    from app.models.subscription import ClientSubscription, SubscriptionStatus
-    from app.models.user import User as UserModel
 
     # 1. Get all unique users associated with this trainer
     # (via ClientTrainer or Booking). This ensures onboarded
@@ -594,17 +572,13 @@ def read_trainer_client(
     trainer_id: int,
     client_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
     if trainer.user_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
-
-    from app.models.associations import ClientTrainer
-    from app.models.subscription import ClientSubscription, SubscriptionStatus
-    from app.models.user import User as UserModel
 
     # Verify association exists
     assoc = session.exec(
@@ -624,6 +598,14 @@ def read_trainer_client(
         )
     ).first()
 
+    # Attendance History
+    attendance = session.exec(
+        select(Booking)
+        .where(Booking.user_id == client_id, Booking.trainer_id == trainer_id)
+        .order_by(Booking.start_time.desc())
+        .limit(20)
+    ).all()
+
     return {
         "id": client.id,
         "name": client.full_name,
@@ -636,12 +618,27 @@ def read_trainer_client(
                     (sub.total_sessions - sub.sessions_used) if sub else 0
                 ),
                 "total_sessions": sub.total_sessions if sub else 0,
+                "start_date": sub.start_date if sub else None,
                 "expiry_date": sub.expiry_date if sub else None,
+                "package_name": (
+                    pkg.name if sub and sub.session_package_id and (pkg := session.get(SessionPackage, sub.session_package_id))
+                    else "N/A"
+                ),
             }
             if sub
             else None
         ),
+        "attendance_history": [
+            {
+                "id": b.id,
+                "start_time": b.start_time,
+                "status": b.status,
+                "workout_focus": b.workout_focus,
+            }
+            for b in attendance
+        ],
         "is_associated": assoc is not None,
+        "created_at": assoc.created_at if assoc else None,
     }
 
 
@@ -650,7 +647,7 @@ def read_trainer_client_analytics(
     trainer_id: int,
     client_id: int,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -661,14 +658,13 @@ def read_trainer_client_analytics(
     from sqlalchemy import func
 
     # from app.models.booking import Booking, BookingStatus (already at top)
-    from app.models.workout import Exercise, WorkoutSessionExercise
 
     # 1. Total Sessions
     total_sessions = session.exec(
         select(func.count(Booking.id)).where(
             Booking.user_id == client_id,
             Booking.trainer_id == trainer_id,
-            Booking.status == BookingStatus.COMPLETED,
+            Booking.status.in_([BookingStatus.COMPLETED, BookingStatus.ATTENDED]),
         )
     ).one()
 
@@ -677,7 +673,10 @@ def read_trainer_client_analytics(
         select(Exercise.name, func.count(WorkoutSessionExercise.id).label("count"))
         .join(WorkoutSessionExercise, Exercise.id == WorkoutSessionExercise.exercise_id)
         .join(Booking, WorkoutSessionExercise.booking_id == Booking.id)
-        .where(Booking.user_id == client_id, Booking.status == BookingStatus.COMPLETED)
+        .where(
+            Booking.user_id == client_id,
+            Booking.status.in_([BookingStatus.COMPLETED, BookingStatus.ATTENDED]),
+        )
         .group_by(Exercise.name)
         .order_by(func.count(WorkoutSessionExercise.id).desc())
         .limit(5)
@@ -694,7 +693,10 @@ def read_trainer_client_analytics(
             ),
         )
         .join(WorkoutSessionExercise, Booking.id == WorkoutSessionExercise.booking_id)
-        .where(Booking.user_id == client_id, Booking.status == BookingStatus.COMPLETED)
+        .where(
+            Booking.user_id == client_id,
+            Booking.status.in_([BookingStatus.COMPLETED, BookingStatus.ATTENDED]),
+        )
         .group_by(Booking.start_time)
         .order_by(Booking.start_time.asc())
     ).all()
@@ -715,7 +717,7 @@ def onboard_client(
     trainer_id: int,
     payload: ClientOnboardSchema,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_user),
 ):
     trainer = session.get(Trainer, trainer_id)
     if not trainer:
@@ -724,10 +726,6 @@ def onboard_client(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     from app.core.security import get_password_hash
-    from app.models.booking import SessionPackage
-    from app.models.subscription import ClientSubscription, SubscriptionStatus
-    from app.models.user import User as UserModel
-    from app.models.user import UserRole
 
     # 1. Check/Create User
     client = session.exec(
@@ -752,8 +750,6 @@ def onboard_client(
         raise HTTPException(status_code=400, detail="Invalid package for selected gym")
 
     # 2.1 Verify Trainer is associated with this gym
-    from app.models.associations import AssociationStatus, GymTrainer
-
     assoc_check = session.exec(
         select(GymTrainer).where(
             GymTrainer.gym_id == payload.gym_id,
@@ -784,8 +780,6 @@ def onboard_client(
     session.add(sub)
 
     # 3.1 Create Client-Trainer Association
-    from app.models.associations import AssociationStatus, ClientTrainer
-
     existing_assoc = session.exec(
         select(ClientTrainer).where(
             ClientTrainer.client_id == client.id, ClientTrainer.trainer_id == trainer_id

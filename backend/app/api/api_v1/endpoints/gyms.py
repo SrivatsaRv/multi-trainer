@@ -274,6 +274,7 @@ def read_gym_clients(
     skip: int = 0,
     limit: int = 25,
     search: Optional[str] = None,
+    trainer_id: Optional[int] = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -287,6 +288,8 @@ def read_gym_clients(
 
     from sqlalchemy import func, or_
 
+    from app.models.associations import ClientTrainer
+    from app.models.booking import SessionPackage
     from app.models.subscription import ClientSubscription, SubscriptionStatus
     from app.models.user import User as UserModel
 
@@ -297,6 +300,11 @@ def read_gym_clients(
         .where(ClientSubscription.gym_id == gym_id)
         .where(ClientSubscription.status == SubscriptionStatus.ACTIVE)
     )
+
+    if trainer_id:
+        base_query = base_query.join(
+            ClientTrainer, UserModel.id == ClientTrainer.client_id
+        ).where(ClientTrainer.trainer_id == trainer_id)
 
     if search:
         search_filter = or_(
@@ -318,6 +326,7 @@ def read_gym_clients(
 
     formatted_results = []
     for user, sub in results:
+        pkg = session.get(SessionPackage, sub.session_package_id) if sub.session_package_id else None
         formatted_results.append(
             {
                 "id": user.id,
@@ -327,6 +336,7 @@ def read_gym_clients(
                     "status": sub.status,
                     "sessions_remaining": sub.total_sessions - sub.sessions_used,
                     "expiry_date": sub.expiry_date,
+                    "package_name": pkg.name if pkg else "N/A",
                 },
             }
         )

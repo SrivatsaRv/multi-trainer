@@ -1,9 +1,12 @@
 import pytest
+from datetime import datetime, timedelta
+
 from fastapi import HTTPException
 
 from app.api.api_v1.deps import get_current_user
 from app.core.security import create_access_token, get_password_hash
 from app.core.session_manager import create_user_session
+from app.models.session import UserSession
 from app.models.user import User, UserRole
 
 
@@ -29,6 +32,10 @@ def test_get_current_user_nonexistent_user(session):
     # Create token for non-existent user
     fake_token = create_access_token(99999)
 
+    # Create session even for non-existent user to pass first check
+    session.add(UserSession(user_id=99999, token=fake_token, is_active=True, expires_at=datetime.utcnow() + timedelta(days=1)))
+    session.commit()
+
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(session, fake_token)
 
@@ -50,6 +57,9 @@ def test_get_current_user_inactive_user(session):
 
     # Create token for inactive user
     token = create_access_token(inactive_user.id)
+    # Create session
+    session.add(UserSession(user_id=inactive_user.id, token=token, is_active=True, expires_at=datetime.utcnow() + timedelta(days=1)))
+    session.commit()
 
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(session, token)

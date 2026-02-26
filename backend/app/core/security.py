@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Union
+import uuid
 
 import bcrypt
 from jose import jwt
@@ -18,7 +19,11 @@ def create_access_token(
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject)}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "jti": str(uuid.uuid4()),  # Unique token ID
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
