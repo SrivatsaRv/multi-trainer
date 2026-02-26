@@ -120,7 +120,11 @@ export const api = {
     bookings: {
         create: (data: any) => fetchWithAuth(`/bookings`, { method: 'POST', body: JSON.stringify(data) }),
         updateStatus: (bookingId: string, status: string) => fetcher(`/bookings/${bookingId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-        log: (sessionId: string, data: any) => fetcher(`/bookings/${sessionId}/log`, { method: 'POST', body: JSON.stringify({ logs: data }) }),
+        log: (sessionId: string, data: any) => fetcher(`/bookings/${sessionId}/log`, { method: 'POST', body: JSON.stringify(data) }),
+        getOccupiedSlots: (params: { trainer_id?: string; gym_id?: string }) => {
+            const query = new URLSearchParams(params).toString()
+            return fetcher(`/bookings/occupied-slots?${query}`)
+        },
     },
     templates: {
         list: () => fetcher('/templates/'),
@@ -146,7 +150,7 @@ export const api = {
         list: () => fetchWithAuth(`/gym-applications/`),
         listForGym: (gymId: string) => fetchWithAuth(`/gym-applications/gym/${gymId}/`),
         create: (gymId: number, message?: string) => fetchWithAuth(`/gym-applications/`, { method: 'POST', body: JSON.stringify({ gym_id: gymId, message }) }),
-        cancel: (id: number) => fetchWithAuth(`/gym-applications/${id}`),
+        cancel: (id: number) => fetchWithAuth(`/gym-applications/${id}`, { method: 'DELETE' }),
         updateStatus: (id: number, status: "APPROVED" | "REJECTED") => fetchWithAuth(`/gym-applications/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
     },
     workouts: {

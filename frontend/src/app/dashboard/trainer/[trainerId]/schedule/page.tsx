@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+import { BookingSlotGrid } from "@/components/dashboard/booking-slot-grid"
 
 interface Session {
     id: number
@@ -151,15 +152,18 @@ export default function TrainerSchedulePage() {
                                         onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
                                     />
                                 </div>
-                                <div className="grid gap-2">
-                                    <Label>Time</Label>
-                                    <Input
-                                        type="time"
-                                        value={bookingData.time}
-                                        onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                            </div>
+                            {bookingData.date && (
+                                <div className="space-y-2">
+                                    <Label>Select Time Slot</Label>
+                                    <BookingSlotGrid
+                                        trainerId={trainerId}
+                                        date={bookingData.date}
+                                        selectedTime={bookingData.time}
+                                        onTimeSelect={(time: string) => setBookingData({ ...bookingData, time })}
                                     />
                                 </div>
-                            </div>
+                            )}
                             <div className="grid gap-2">
                                 <Label>Notes</Label>
                                 <Input
@@ -219,6 +223,6 @@ export default function TrainerSchedulePage() {
                     ))
                 )}
             </div>
-        </div>
+        </div >
     )
 }

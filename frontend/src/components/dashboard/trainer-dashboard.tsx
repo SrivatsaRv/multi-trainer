@@ -208,13 +208,16 @@ export function TrainerDashboard() {
             </Card>
 
             {/* Upcoming Sessions */}
-            <TrainerTodayView sessions={sessions.filter((s: any) => {
-                const sDate = new Date(s.start_time);
-                const today = new Date();
-                return sDate.getDate() === today.getDate() &&
-                    sDate.getMonth() === today.getMonth() &&
-                    sDate.getFullYear() === today.getFullYear();
-            })} />
+            <TrainerTodayView
+                trainerId={profile?.id || 0}
+                sessions={sessions.filter((s: any) => {
+                    const sDate = new Date(s.start_time);
+                    const today = new Date();
+                    return sDate.getDate() === today.getDate() &&
+                        sDate.getMonth() === today.getMonth() &&
+                        sDate.getFullYear() === today.getFullYear();
+                })}
+            />
         </div>
     );
 }

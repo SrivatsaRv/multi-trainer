@@ -55,11 +55,9 @@ export function LoginForm() {
             }
 
             if (result?.ok) {
-                toast.success("Login successful");
-                // The SessionProvider will automatically update the session
-                // and the useEffect above will redirect to dashboard
-                // Force a hard reload to ensure middleware cookies are recognized if needed
-                router.refresh();
+                toast.success("Login successful! Redirecting...");
+                // Use window.location.href for a hard redirect to ensure cookies are synchronized
+                window.location.href = "/dashboard";
             }
         } catch (error: any) {
             toast.error("Something went wrong");

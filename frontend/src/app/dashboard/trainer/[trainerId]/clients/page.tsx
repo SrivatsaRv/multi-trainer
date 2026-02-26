@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { format } from "date-fns";
+import { BookingSlotGrid } from "@/components/dashboard/booking-slot-grid";
 
 export default function ClientsPage() {
     const { user, profile } = useAuth();
@@ -66,7 +67,9 @@ export default function ClientsPage() {
 
                 // If only one gym, select it by default (optional UX improvement)
                 if (active.length === 1) {
-                    setSelectedGymId(active[0].gym.id.toString());
+                    const gid = active[0].gym.id.toString();
+                    setSelectedGymId(gid);
+                    setNewClient(prev => ({ ...prev, gym_id: gid }));
                     fetchPackages(active[0].gym.id);
                 }
 
@@ -211,6 +214,35 @@ export default function ClientsPage() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>First Session (Optional)</Label>
+                                <div className="grid grid-cols-2 gap-4 mb-2">
+                                    <Input
+                                        type="date"
+                                        value={newClient.start_time.split('T')[0]}
+                                        onChange={(e) => setNewClient({ ...newClient, start_time: `${e.target.value}T10:00` })}
+                                    />
+                                    <Input
+                                        type="time"
+                                        value={newClient.start_time.split('T')[1]?.slice(0, 5) || "10:00"}
+                                        onChange={(e) => {
+                                            const date = newClient.start_time.split('T')[0] || format(new Date(), 'yyyy-MM-dd')
+                                            setNewClient({ ...newClient, start_time: `${date}T${e.target.value}` })
+                                        }}
+                                    />
+                                </div>
+                                {newClient.gym_id && (
+                                    <BookingSlotGrid
+                                        trainerId={params.trainerId as string}
+                                        date={newClient.start_time.split('T')[0] || format(new Date(), 'yyyy-MM-dd')}
+                                        selectedTime={newClient.start_time.split('T')[1]?.slice(0, 5)}
+                                        onTimeSelect={(time) => {
+                                            const date = newClient.start_time.split('T')[0] || format(new Date(), 'yyyy-MM-dd')
+                                            setNewClient({ ...newClient, start_time: `${date}T${time}` })
+                                        }}
+                                    />
+                                )}
                             </div>
                         </div>
                         <DialogFooter>

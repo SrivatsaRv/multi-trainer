@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+import { BookingSlotGrid } from "./booking-slot-grid"
 
 interface CreateBookingDialogProps {
     gymId: string
@@ -116,24 +117,26 @@ export function CreateBookingDialog({ gymId, trainers, clients, onSuccess }: Cre
                         </Select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Date</Label>
-                            <Input
-                                type="date"
-                                value={newBooking.date}
-                                onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Time</Label>
-                            <Input
-                                type="time"
-                                value={newBooking.time}
-                                onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <Label>Date</Label>
+                        <Input
+                            type="date"
+                            value={newBooking.date}
+                            onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
+                        />
                     </div>
+
+                    {newBooking.trainer_id && newBooking.date && (
+                        <div className="space-y-2">
+                            <Label>Select Time Slot</Label>
+                            <BookingSlotGrid
+                                trainerId={newBooking.trainer_id}
+                                date={newBooking.date}
+                                selectedTime={newBooking.time}
+                                onTimeSelect={(time) => setNewBooking({ ...newBooking, time })}
+                            />
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label>Notes (Optional)</Label>

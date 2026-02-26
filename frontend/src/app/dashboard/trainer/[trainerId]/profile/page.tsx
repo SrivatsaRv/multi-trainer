@@ -201,16 +201,18 @@ export default function TrainerProfilePage({ params }: { params: Promise<{ train
     const getApplicationStatus = (gymId: number) => applications.find(a => a.gym_id === gymId)?.status;
 
     return (
-        <div className="space-y-6 pb-24 md:pb-10 max-w-lg mx-auto md:max-w-none">
+        <div className="space-y-6 pb-24 md:pb-10 w-full px-4 sm:px-6 lg:px-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-6">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Trainer Profile</h1>
-                    <p className="text-muted-foreground">Your digital business card & qualifications</p>
+                    <div className="flex items-center gap-3 mt-1">
+                        <p className="text-muted-foreground">Digital business card & qualifications</p>
+                        <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-[10px] px-2 h-5">
+                            {profile.verification_status}
+                        </Badge>
+                    </div>
                 </div>
-                <Badge variant={profile.verification_status === 'APPROVED' ? 'default' : 'secondary'} className="text-sm px-3 py-1">
-                    {profile.verification_status}
-                </Badge>
             </div>
 
             {/* Main Content Grid via Unified Form */}

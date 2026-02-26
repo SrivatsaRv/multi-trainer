@@ -449,6 +449,7 @@ export default function SessionDetailPage() {
                                                                     type="number"
                                                                     className="w-20 h-9 font-semibold"
                                                                     value={set.reps}
+                                                                    data-testid="set-reps"
                                                                     onChange={(e) => updateSet(exIdx, setIdx, 'reps', e.target.value)}
                                                                 />
                                                             </TableCell>
@@ -457,6 +458,7 @@ export default function SessionDetailPage() {
                                                                     type="number"
                                                                     className="w-20 h-9 font-semibold"
                                                                     value={set.weight_kg}
+                                                                    data-testid="set-weight"
                                                                     onChange={(e) => updateSet(exIdx, setIdx, 'weight_kg', e.target.value)}
                                                                 />
                                                             </TableCell>

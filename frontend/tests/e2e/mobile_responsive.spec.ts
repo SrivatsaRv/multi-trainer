@@ -1,7 +1,10 @@
 import { test, expect, devices } from '@playwright/test';
 import { TEST_USER_EMAIL, TEST_USER_PASSWORD } from '../test-constants';
 
-test.use({ ...devices['iPhone 13'] });
+test.use({
+    ...devices['iPhone 13'],
+    browserName: 'chromium'
+});
 
 test.describe('Mobile Responsiveness & Navigation', () => {
 
@@ -17,15 +20,15 @@ test.describe('Mobile Responsiveness & Navigation', () => {
         // 2. Verify Sidebar is hidden by default and Toggle exists
         // ShadCN sidebar uses a button with "sr-only" or specific class for toggle
         // Usually a menu icon
-        const sidebarToggle = page.locator('button[data-sidebar="trigger"]');
+        const sidebarToggle = page.getByLabel('Toggle Sidebar');
         await expect(sidebarToggle).toBeVisible();
 
         // 3. Open Sidebar
         await sidebarToggle.click();
 
         // 4. Verify Sidebar items are visible
-        await expect(page.getByRole('link', { name: /sessions/i }).first()).toBeVisible();
-        await expect(page.getByRole('link', { name: /clients/i }).first()).toBeVisible();
+        await expect(page.getByRole('link', { name: /trainers/i }).first()).toBeVisible();
+        await expect(page.getByRole('link', { name: /bookings/i }).first()).toBeVisible();
 
         // 5. Navigate via mobile sidebar
         await page.getByRole('link', { name: /analytics/i }).first().click();

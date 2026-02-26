@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import {
     Dialog,
     DialogContent,
@@ -172,9 +173,14 @@ export default function GymBookingsPage({ params }: { params: Promise<{ gymId: s
                                         <TableCell>
                                             <Badge variant={
                                                 booking.status === "COMPLETED" ? "default" :
-                                                    booking.status === "PENDING" ? "secondary" :
-                                                        "destructive"
-                                            }>
+                                                    booking.status === "ATTENDED" ? "outline" :
+                                                        booking.status === "NO_SHOW" ? "destructive" :
+                                                            booking.status === "PENDING" ? "secondary" :
+                                                                "destructive"
+                                            } className={cn(
+                                                booking.status === "ATTENDED" && "border-blue-500 text-blue-500",
+                                                booking.status === "NO_SHOW" && "bg-destructive text-destructive-foreground"
+                                            )}>
                                                 {booking.status}
                                             </Badge>
                                         </TableCell>

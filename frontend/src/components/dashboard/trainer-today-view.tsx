@@ -17,22 +17,15 @@ interface Session {
 
 interface TrainerTodayViewProps {
     sessions: Session[]
+    trainerId: number | string
 }
 
-export function TrainerTodayView({ sessions }: TrainerTodayViewProps) {
+export function TrainerTodayView({ sessions, trainerId }: TrainerTodayViewProps) {
     const router = useRouter()
 
     const handleSessionClick = (sessionId: number) => {
-        // Navigate to session detail page
-        // Assuming the current path is /dashboard/trainer/[id]
-        // We want /dashboard/trainer/[id]/sessions/[sessionId]
-        // But better to use absolute path constructed from params if available, 
-        // or relative from current route context.
-        const currentPath = window.location.pathname;
-        // Extract trainer ID from path if possible, or assume context.
-        // Ideally the parent passes navigate function or base path.
-        // For now, let's assume we are at /dashboard/trainer/[id]
-        router.push(`${currentPath}/sessions/${sessionId}`)
+        console.log(`[TrainerTodayView] Clicked session ${sessionId}, navigating to /dashboard/trainer/${trainerId}/sessions/${sessionId}`);
+        router.push(`/dashboard/trainer/${trainerId}/sessions/${sessionId}`)
     }
 
     return (
