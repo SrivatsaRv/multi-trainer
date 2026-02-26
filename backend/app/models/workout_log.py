@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, Relationship, SQLModel
 
+from app.models.workout import MuscleGroup
+
+
 if TYPE_CHECKING:
     from app.models.trainer import Trainer
     from app.models.user import User
@@ -12,6 +15,7 @@ if TYPE_CHECKING:
 class WorkoutLogBase(SQLModel):
     date: datetime = Field(default_factory=datetime.utcnow)
     name: str
+    workout_category: Optional[MuscleGroup] = Field(default=None)
     notes: Optional[str] = None
 
 

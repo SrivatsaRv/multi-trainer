@@ -48,7 +48,7 @@ def get_gym_analytics_overview(
     attendance_statement = (
         select(func.date(Booking.start_time), func.count(Booking.id))
         .where(Booking.gym_id == gym_id)
-        .where(Booking.status == BookingStatus.COMPLETED)
+        .where(Booking.status.in_([BookingStatus.COMPLETED, BookingStatus.ATTENDED]))
         .where(Booking.start_time >= thirty_days_ago)
         .group_by(func.date(Booking.start_time))
         .order_by(func.date(Booking.start_time).asc())
@@ -71,7 +71,7 @@ def get_gym_analytics_overview(
             select(func.count(Booking.id))
             .where(Booking.trainer_id == trainer.id)
             .where(Booking.gym_id == gym_id)
-            .where(Booking.status == BookingStatus.COMPLETED)
+            .where(Booking.status.in_([BookingStatus.COMPLETED, BookingStatus.ATTENDED]))
         ).one()
 
         client_count = session.exec(

@@ -4,9 +4,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.core.security import create_access_token
+from app.core.session_manager import create_user_session
 from app.main import app
 from app.models.booking import Booking, BookingStatus
 from app.models.gym import Gym
+from app.models.session import UserSession
 from app.models.trainer import Trainer
 from app.models.user import User, UserRole
 from app.models.workout import (Exercise, MeasurementUnit,
@@ -112,7 +114,9 @@ def test_analytics_exercise_history(client: TestClient, session: Session):
     session.commit()
 
     # 6. Authenticate as Trainer
-    token = create_access_token(subject=str(trainer_user.id))
+    # Create session
+    user_session = create_user_session(session, trainer_user.id)
+    token = user_session.token
     headers = {"Authorization": f"Bearer {token}"}
 
     # 7. Call Analytics Endpoint

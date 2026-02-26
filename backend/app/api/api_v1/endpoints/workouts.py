@@ -220,6 +220,7 @@ def create_log(
         trainer_id=trainer.id,
         date=log_in.date,
         name=log_in.name,
+        workout_category=log_in.workout_category,
         notes=log_in.notes,
     )
     session.add(db_log)

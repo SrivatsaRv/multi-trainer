@@ -27,6 +27,8 @@ class MuscleGroup(str, Enum):
     BACK = "BACK"
     SHOULDERS = "SHOULDERS"
     ARMS = "ARMS"
+    BICEPS = "BICEPS"
+    TRICEPS = "TRICEPS"
     CORE = "CORE"
     FULL_BODY = "FULL_BODY"
     CARDIO = "CARDIO"
@@ -96,7 +98,8 @@ class WorkoutTemplate(SQLModel, table=True):
     # Relationships
     trainer: Optional["Trainer"] = Relationship(back_populates="workout_templates")
     workout_template_exercises: List["WorkoutTemplateExercise"] = Relationship(
-        back_populates="template"
+        back_populates="template",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 
 
