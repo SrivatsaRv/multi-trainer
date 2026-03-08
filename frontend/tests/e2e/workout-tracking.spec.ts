@@ -1,4 +1,4 @@
--import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { TEST_USER_PASSWORD } from '../test-constants';
 
 test.describe('Workout Tracking & Client Analytics', () => {
