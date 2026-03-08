@@ -8,19 +8,12 @@ from sqlmodel import Session, create_engine, func, select
 # Add current directory to path for imports
 sys.path.append(os.getcwd())
 
-from app.models.associations import ClientTrainer, GymTrainer  # noqa: E402
-from app.models.booking import (Booking, BookingStatus,  # noqa: E402
-                                SessionPackage)
-from app.models.certificate import Certificate  # noqa: E402
-from app.models.client_profile import ClientProfile  # noqa: E402
+from app.models.booking import Booking, SessionPackage  # noqa: E402
 from app.models.gym import Gym  # noqa: E402
-from app.models.gym_application import GymApplication  # noqa: E402
 from app.models.session import UserSession  # noqa: E402
 from app.models.subscription import ClientSubscription  # noqa: E402
 from app.models.trainer import Trainer  # noqa: E402
 from app.models.user import User  # noqa: E402
-from app.models.workout import Exercise  # noqa: E402
-from app.models.workout_log import ExerciseLog, WorkoutLog  # noqa: E402
 
 # Situation Report Script
 # Shows system health and database statistics.

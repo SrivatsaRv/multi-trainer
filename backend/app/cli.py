@@ -558,7 +558,7 @@ def interactive_menu():
                     reject_trainer,
                 ]:
                     confirm = input(
-                        f"Are you sure you want to proceed? [y/N]: "
+                        "Are you sure you want to proceed? [y/N]: "
                     ).lower()
                     if confirm != "y":
                         print("Operation cancelled.")
