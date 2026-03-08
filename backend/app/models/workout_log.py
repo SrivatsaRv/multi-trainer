@@ -6,7 +6,6 @@ from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.workout import MuscleGroup
 
-
 if TYPE_CHECKING:
     from app.models.trainer import Trainer
     from app.models.user import User

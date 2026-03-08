@@ -326,7 +326,11 @@ def read_gym_clients(
 
     formatted_results = []
     for user, sub in results:
-        pkg = session.get(SessionPackage, sub.session_package_id) if sub.session_package_id else None
+        pkg = (
+            session.get(SessionPackage, sub.session_package_id)
+            if sub.session_package_id
+            else None
+        )
         formatted_results.append(
             {
                 "id": user.id,

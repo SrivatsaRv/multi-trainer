@@ -9,7 +9,8 @@ from sqlmodel import Session, create_engine, func, select
 sys.path.append(os.getcwd())
 
 from app.models.associations import ClientTrainer, GymTrainer  # noqa: E402
-from app.models.booking import Booking, BookingStatus, SessionPackage  # noqa: E402
+from app.models.booking import (Booking, BookingStatus,  # noqa: E402
+                                SessionPackage)
 from app.models.certificate import Certificate  # noqa: E402
 from app.models.client_profile import ClientProfile  # noqa: E402
 from app.models.gym import Gym  # noqa: E402

@@ -1,6 +1,6 @@
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Union
-import uuid
 
 import bcrypt
 from jose import jwt

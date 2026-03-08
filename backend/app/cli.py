@@ -557,7 +557,9 @@ def interactive_menu():
                     reject_gym,
                     reject_trainer,
                 ]:
-                    confirm = input(f"Are you sure you want to proceed? [y/N]: ").lower()
+                    confirm = input(
+                        f"Are you sure you want to proceed? [y/N]: "
+                    ).lower()
                     if confirm != "y":
                         print("Operation cancelled.")
                         continue
@@ -630,7 +632,9 @@ def main():
         del_assoc_parser = subparsers.add_parser(
             "delete-association", help="Unlink Gym and Trainer"
         )
-        del_assoc_parser.add_argument("--gym-id", required=True, type=int, help="Gym ID")
+        del_assoc_parser.add_argument(
+            "--gym-id", required=True, type=int, help="Gym ID"
+        )
         del_assoc_parser.add_argument(
             "--trainer-id", required=True, type=int, help="Trainer ID"
         )
@@ -654,7 +658,9 @@ def main():
         pkg_list = subparsers.add_parser("list-packages", help="List gym packages")
         pkg_list.add_argument("--gym-id", type=int, help="Optional Gym Filter")
 
-        pkg_create = subparsers.add_parser("create-package", help="Create a gym package")
+        pkg_create = subparsers.add_parser(
+            "create-package", help="Create a gym package"
+        )
         pkg_create.add_argument("--gym-id", required=True, type=int)
         pkg_create.add_argument("--name", required=True)
         pkg_create.add_argument("--price", required=True, type=int)

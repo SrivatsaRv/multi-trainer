@@ -39,12 +39,14 @@ def get_occupied_slots(
         statement = statement.where(Booking.gym_id == gym_id)
 
     statement = statement.where(
-        Booking.status.in_([
-            BookingStatus.SCHEDULED,
-            BookingStatus.COMPLETED,
-            BookingStatus.PENDING,
-            BookingStatus.BLOCKED
-        ])
+        Booking.status.in_(
+            [
+                BookingStatus.SCHEDULED,
+                BookingStatus.COMPLETED,
+                BookingStatus.PENDING,
+                BookingStatus.BLOCKED,
+            ]
+        )
     )
     statement = statement.where(Booking.start_time >= datetime.now())
 

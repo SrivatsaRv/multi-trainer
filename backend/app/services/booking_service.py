@@ -128,6 +128,7 @@ class BookingService:
         session.commit()
         session.refresh(booking)
         return booking
+
     @staticmethod
     def update_booking_status(
         session: Session,
@@ -159,7 +160,7 @@ class BookingService:
 
         # Credit Adjustment Logic
         # Proactive model: Credits are deducted at SCHEDULED creation.
-        
+
         # If moving TO Cancelled from a 'deducted' state, refund.
         deducted_states = [
             BookingStatus.SCHEDULED,

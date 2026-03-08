@@ -7,13 +7,18 @@ from sqlmodel import Session, select
 
 from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
-from app.models.associations import AssociationStatus, ClientTrainer, GymTrainer  # noqa: F401
-from app.models.booking import Booking, BookingStatus, SessionPackage  # noqa: F401
+from app.models.associations import (AssociationStatus,  # noqa: F401
+                                     ClientTrainer, GymTrainer)
+from app.models.booking import (Booking, BookingStatus,  # noqa: F401
+                                SessionPackage)
 from app.models.gym import Gym  # noqa: F401
-from app.models.subscription import ClientSubscription, SubscriptionStatus  # noqa: F401
+from app.models.subscription import (ClientSubscription,  # noqa: F401
+                                     SubscriptionStatus)
 from app.models.trainer import Trainer, TrainerCreate, TrainerUpdate
-from app.models.user import User as UserModel, UserRole
-from app.models.workout import Exercise, WorkoutSessionExercise, WorkoutSet  # noqa: F401
+from app.models.user import User as UserModel
+from app.models.user import UserRole
+from app.models.workout import (Exercise, WorkoutSessionExercise,  # noqa: F401
+                                WorkoutSet)
 
 
 class ClientOnboardSchema(BaseModel):
@@ -164,7 +169,11 @@ def get_trainer_analytics(
 
     unique_clients = set(list(clients_from_assoc) + clients_from_bookings)
 
-    completed = [b for b in bookings if b.status in [BookingStatus.COMPLETED, BookingStatus.ATTENDED]]
+    completed = [
+        b
+        for b in bookings
+        if b.status in [BookingStatus.COMPLETED, BookingStatus.ATTENDED]
+    ]
     upcoming = [b for b in bookings if b.status == BookingStatus.SCHEDULED]
 
     # Simple earnings logic: 500 INR per completed or attended session
@@ -621,7 +630,10 @@ def read_trainer_client(
                 "start_date": sub.start_date if sub else None,
                 "expiry_date": sub.expiry_date if sub else None,
                 "package_name": (
-                    pkg.name if sub and sub.session_package_id and (pkg := session.get(SessionPackage, sub.session_package_id))
+                    pkg.name
+                    if sub
+                    and sub.session_package_id
+                    and (pkg := session.get(SessionPackage, sub.session_package_id))
                     else "N/A"
                 ),
             }
@@ -658,7 +670,6 @@ def read_trainer_client_analytics(
     from sqlalchemy import func
 
     # from app.models.booking import Booking, BookingStatus (already at top)
-
     # 1. Total Sessions
     total_sessions = session.exec(
         select(func.count(Booking.id)).where(
