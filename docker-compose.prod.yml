@@ -5,7 +5,7 @@
 # ============================================================
 services:
   backend:
-    image: ${REGISTRY:-ttl.sh}/multi-trainer-backend:${IMAGE_TAG:-latest}
+    image: ttl.sh/multi-trainer-backend:0.2.0-47069e3
     container_name: gym-saas-backend
     restart: unless-stopped
     ports:
@@ -17,9 +17,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
   frontend:
-    image: ${REGISTRY:-ttl.sh}/multi-trainer-frontend:${IMAGE_TAG:-latest}
+    image: ttl.sh/multi-trainer-frontend:0.2.0-47069e3
     container_name: gym-saas-frontend
     restart: unless-stopped
     ports:
@@ -30,7 +29,6 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
     depends_on:
       - backend
-
   db:
     image: postgres:16-alpine
     container_name: gym-saas-db
@@ -42,12 +40,11 @@ services:
     ports:
       - "${DB_PORT:-5432}:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-gym_saas}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-gym_saas}"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-
 volumes:
   postgres_data:
