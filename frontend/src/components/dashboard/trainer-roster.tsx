@@ -107,7 +107,7 @@ export function TrainerRoster({ roster, onUpdate }: TrainerRosterProps) {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">
-                                    {new Date(item.accepted_at || item.updated_at || Date.now()).toLocaleDateString()}
+                                    {item.accepted_at || item.updated_at ? new Date(item.accepted_at || item.updated_at).toLocaleDateString() : "Pending"}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end items-center gap-2">

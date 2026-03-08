@@ -35,7 +35,7 @@ export function JoinRequests({ applications, onAction }: JoinRequestsProps) {
                                 )}
                                 {app.message && (
                                     <div className="text-sm bg-background p-2 rounded border italic mt-2">
-                                        "{app.message}"
+                                        &quot;{app.message}&quot;
                                     </div>
                                 )}
                             </div>

@@ -57,6 +57,7 @@ export function LoginForm() {
             if (result?.ok) {
                 toast.success("Login successful! Redirecting...");
                 // Use window.location.href for a hard redirect to ensure cookies are synchronized
+                // eslint-disable-next-line react-hooks/immutability
                 window.location.href = "/dashboard";
             }
         } catch (error: any) {

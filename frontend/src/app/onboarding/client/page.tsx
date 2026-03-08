@@ -27,7 +27,8 @@ import {
     ChevronLeft,
     CheckCircle2,
     Scale,
-    Ruler
+    Ruler,
+    Loader2
 } from "lucide-react"
 
 export default function ClientOnboardingPage() {
@@ -86,7 +87,7 @@ export default function ClientOnboardingPage() {
             <div className="w-full max-w-xl space-y-8">
                 <div className="space-y-2 text-center">
                     <h1 className="text-3xl font-bold tracking-tight">Welcome to Multi-Trainer</h1>
-                    <p className="text-muted-foreground">Let's set up your profile to get the most out of your training.</p>
+                    <p className="text-muted-foreground">Let&apos;s set up your profile to get the most out of your training.</p>
                 </div>
 
                 <div className="space-y-4">

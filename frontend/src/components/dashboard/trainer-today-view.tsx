@@ -30,7 +30,7 @@ export function TrainerTodayView({ sessions, trainerId }: TrainerTodayViewProps)
 
     return (
         <div className="space-y-4">
-            <h2 className="text-xl font-semibold tracking-tight">Today's Schedule</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Today&apos;s Schedule</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {sessions.map((session) => (
                     <Card

@@ -10,7 +10,7 @@ interface User {
   id: string;
   email: string;
   full_name: string;
-  role: "TRAINER" | "GYM_ADMIN" | "SAAS_ADMIN";
+  role: "TRAINER" | "GYM_ADMIN" | "SAAS_ADMIN" | "CLIENT";
   is_active: boolean;
 }
 
@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (accessToken) {
         setAuthToken(accessToken);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setToken(accessToken);
 
         // If we are on an auth page, and we just had a session error, 
