@@ -1,8 +1,21 @@
-.PHONY: help build up down logs sitrep seed-demo-users clean-demo-users lint format unit-tests test admin prod-all investor-demo-setup
+.PHONY: help build push tag-compose up down logs sitrep seed-demo-users clean-demo-users lint format test-unit unit-tests test-integration playwright test admin prod-all investor-demo-setup
 
 # --- Configuration ---
 BACKEND_CMD := docker-compose exec -T -e PYTHONPATH=. backend
 FRONTEND_DIR := frontend
+
+# CI/CD Configuration (read from ci.env + VERSION)
+VERSION     := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
+GIT_SHA     := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+IMAGE_TAG   := $(VERSION)-$(GIT_SHA)
+
+# Source registry config
+include ci.env
+export
+
+# Fully qualified image refs
+BACKEND_REF  := $(REGISTRY)/$(BACKEND_IMAGE):$(IMAGE_TAG)
+FRONTEND_REF := $(REGISTRY)/$(FRONTEND_IMAGE):$(IMAGE_TAG)
 
 help:
 	@echo "======================================================================"
@@ -22,21 +35,50 @@ help:
 	@echo "  make seed-demo-users     : Seed Complete Demo Environment"
 	@echo "  make clean-demo-users    : Wipe All Demo Data"
 	@echo ""
-	@echo "CI/DEVELOPMENT"
+	@echo "CI/CD"
 	@echo "  make lint                : Run Flake8 & ESLint"
 	@echo "  make test                : Run All Backend & Frontend Tests"
 	@echo "  make format              : Format Code (Black, Isort)"
+	@echo "  make build               : Build tagged images ($(IMAGE_TAG))"
+	@echo "  make push                : Push images to $(REGISTRY)"
+	@echo "  make tag-compose         : Update docker-compose.prod.yml tags via yq"
 	@echo "======================================================================"
 
 # --- INFRASTRUCTURE ---
-build:
-	docker-compose build
 
+# Local development: build + start from source via dev compose
 up:
 	docker-compose up -d
 
 down:
 	docker-compose down
+
+# --- BUILD & SHIP ---
+
+# Build production-tagged images
+# Reads REGISTRY, image names from ci.env, version from VERSION + git SHA
+build:
+	docker build \
+		-f backend/Dockerfile \
+		--target runner \
+		-t $(BACKEND_REF) \
+		backend/
+	docker build \
+		-f frontend/Dockerfile \
+		--target runner \
+		-t $(FRONTEND_REF) \
+		frontend/
+
+# Push to configured registry
+push:
+	docker push $(BACKEND_REF)
+	docker push $(FRONTEND_REF)
+
+# Update image tags in docker-compose.prod.yml via yq
+tag-compose:
+	yq -i '.services.backend.image = "$(BACKEND_REF)"' docker-compose.prod.yml
+	yq -i '.services.frontend.image = "$(FRONTEND_REF)"' docker-compose.prod.yml
+	@echo "Updated docker-compose.prod.yml with tag: $(IMAGE_TAG)"
 
 # --- QUALITY ---
 lint:
@@ -92,7 +134,7 @@ seed-test-data:
 
 # --- PRIMARY ENTRY POINTS ---
 
-prod-all: down build up
+prod-all: down up
 	@echo "Starting Production Readiness Check..."
 	@sleep 10
 	@$(MAKE) format
@@ -102,7 +144,7 @@ prod-all: down build up
 	@$(MAKE) sitrep
 	@echo "Production Ready."
 
-investor-demo-setup: down build up
+investor-demo-setup: down up
 	@echo "Setting up Investor Demo..."
 	@sleep 15
 	@$(MAKE) seed-demo-users
