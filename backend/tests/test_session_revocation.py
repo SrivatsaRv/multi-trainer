@@ -1,11 +1,13 @@
 import pytest
 from fastapi import HTTPException
 from sqlmodel import Session, select
+
 from app.api.api_v1.deps import get_current_user
 from app.core.security import create_access_token
 from app.core.session_manager import create_user_session, invalidate_session
 from app.models.session import UserSession
 from app.models.user import User, UserRole
+
 
 def test_get_current_user_with_revoked_session(session: Session, test_user: User):
     """
@@ -22,17 +24,20 @@ def test_get_current_user_with_revoked_session(session: Session, test_user: User
 
     # 3. Invalidate the session in the DB
     invalidate_session(session, token)
-    
+
     # 4. Attempt to get user again - should fail with SESSION_EXPIRED
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(session, token)
-    
+
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "SESSION_EXPIRED"
 
-def test_get_current_user_with_deleted_session_record(session: Session, test_user: User):
+
+def test_get_current_user_with_deleted_session_record(
+    session: Session, test_user: User
+):
     """
-    Test that get_current_user raises a 401 SESSION_EXPIRED when the session record 
+    Test that get_current_user raises a 401 SESSION_EXPIRED when the session record
     is physically deleted from the database.
     """
     # 1. Create a valid session
@@ -46,9 +51,10 @@ def test_get_current_user_with_deleted_session_record(session: Session, test_use
     # 3. Attempt to get user - should fail with SESSION_EXPIRED
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(session, token)
-    
+
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "SESSION_EXPIRED"
+
 
 def test_get_current_user_with_inactive_session_flag(session: Session, test_user: User):
     """
@@ -66,6 +72,6 @@ def test_get_current_user_with_inactive_session_flag(session: Session, test_user
     # 3. Attempt to get user - should fail with SESSION_EXPIRED
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(session, token)
-    
+
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "SESSION_EXPIRED"
