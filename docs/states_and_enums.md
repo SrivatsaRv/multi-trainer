@@ -24,7 +24,7 @@ This document lists all the state-related fields and enums used across the Multi
 
 | Component | Field | Enum Values | Description |
 | :--- | :--- | :--- | :--- |
-| **Booking** | `status` | `SCHEDULED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`, `LATE` | Tracks session attendance and lifecycle. |
+| **Booking** | `status` | `SCHEDULED`, `ATTENDED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`, `LATE`, `PENDING`, `BLOCKED` | Tracks session attendance and lifecycle. |
 | **Client Subscription** | `status` | `ACTIVE`, `EXPIRED`, `CANCELLED` | Determines if a client has valid sessions to book. |
 
 ## Workout Metadata

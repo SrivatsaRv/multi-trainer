@@ -75,6 +75,23 @@ make sitrep
 make logs
 ```
 
+### CI/CD & Production Deployment
+We use a config-driven CI/CD pipeline via GitHub Actions and Make. 
+
+```bash
+# Production Image Build (tags via VERSION and Git SHA)
+make build    # Reads from ci.env
+
+# Push to Registry (TTL.sh, ECR, etc.)
+make push
+
+# Update tags in docker-compose.prod.yml natively 
+make tag-compose
+```
+
+**Environment Variables**
+All CI/CD behavior is governed by `ci.env`. Swapping container registries (e.g. `ttl.sh` to AWS ECR) is a one-line change in `ci.env`. The production deployment relies entirely on `docker-compose.prod.yml` mapping to immutable image tags logic.
+
 ## Testing Strategy
 We employ a 3-layer testing pyramid:
 1.  **Unit Tests** (`backend/tests`): Business logic, Models, Auth (Pytest).
