@@ -70,9 +70,7 @@ Thumbs.db
 drizzle/
 migrations/
 *.sql
-backend/app/api/api_v1/endpoints/bookings.py
-/files1.txt
-/files2.txt
-/branch1_files.txt
-/branch2_files.txt
-/tmp_simulation_output.txt
+
+# runtime artifacts
+*.db
+*-debug.png
