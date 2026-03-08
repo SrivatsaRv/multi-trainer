@@ -107,4 +107,3 @@ We employ a 3-layer testing pyramid:
 - **Infrastructure**: Docker Compose, Nginx (optional proxy), Make.
 
 ---
-*Generated for One2N Multi-Trainer Project - Feb 2026*
