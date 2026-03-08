@@ -14,3 +14,14 @@ yarn-error.log*
 *.md
 .git
 .vscode
+
+# Test suites and artifacts -- not needed in production image
+tests/
+playwright-report/
+test-results/
+playwright.config.ts
+vitest.config.ts
+
+# Debug artifacts
+*-debug.png
+*.log

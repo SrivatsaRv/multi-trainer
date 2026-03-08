@@ -8,6 +8,19 @@ htmlcov/
 .venv
 venv/
 ENV/
-multi_trainer.db
-tests/reports/
+*.db
 *.log
+*.md
+.flake8
+.git/
+.gitignore
+
+# Test suite -- not needed in production image
+tests/
+
+# Scratch/debug scripts
+fix_password.py
+fix_test_users.py
+ensure_session.py
+simulate_apply_approve.py
+verify_analytics_fix.py
