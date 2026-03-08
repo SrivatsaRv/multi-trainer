@@ -1,6 +1,6 @@
 # Stage 1: Base
 FROM node:20-alpine AS base
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
 # Stage 2: Dependencies
@@ -14,7 +14,7 @@ RUN npm ci
 FROM base AS development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NODE_ENV development
+ENV NODE_ENV=development
 CMD ["npm", "run", "dev"]
 
 # Stage 4: Builder
@@ -26,7 +26,7 @@ RUN npm run build
 
 # Stage 5: Runner
 FROM base AS runner
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -39,7 +39,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
