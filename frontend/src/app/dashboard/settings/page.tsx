@@ -15,7 +15,11 @@ import {
     Star,
     Trash2,
     Plus,
-    Building
+    Building,
+    MapPin,
+    CheckCircle,
+    Clock,
+    XCircle
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -31,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TrainerProfileForm } from "@/components/dashboard/trainer-profile-form";
 
 const POPULAR_SPECIALIZATIONS = [
@@ -44,7 +49,26 @@ const POPULAR_CERTS = [
 
 export default function SettingsPage() {
     const { user, profile: contextProfile, refreshProfile } = useAuth();
-    const [activeTab, setActiveTab] = useState("profile");
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    // Initialize tab from URL or default to 'profile'
+    const initialTab = searchParams.get("tab") || "profile";
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    // Update local state if URL changes (e.g. via back button)
+    useEffect(() => {
+        const tab = searchParams.get("tab");
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        // Push the new tab to the URL without full reload (shallow routing by default in app router if using same path)
+        router.push(`/dashboard/settings?tab=${val}`);
+    };
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -63,18 +87,30 @@ export default function SettingsPage() {
     const [isCertDialogOpen, setIsCertDialogOpen] = useState(false);
     const [newCert, setNewCert] = useState({ name: "", issuing_organization: "", issue_date: "" });
 
+    // Gym Association State
+    const [gyms, setGyms] = useState<any[]>([]);
+    const [applications, setApplications] = useState<any[]>([]);
+    const [associations, setAssociations] = useState<any[]>([]);
+    const [applying, setApplying] = useState<number | null>(null);
+
     useEffect(() => {
         async function loadProfile() {
             if (!user) return;
             setLoading(true);
             try {
                 if (user.role === "TRAINER" && contextProfile?.id) {
-                    const [prof, certs] = await Promise.all([
+                    const [prof, certs, allGyms, myApps, myAssocs] = await Promise.all([
                         api.trainers.get(contextProfile.id),
-                        api.certificates.list()
+                        api.certificates.list(),
+                        api.gyms.list(),
+                        api.gymApplications.list(),
+                        api.trainers.getGyms(contextProfile.id.toString())
                     ]);
                     setLocalProfile(prof);
                     setCertificates(certs);
+                    setGyms(allGyms.filter((g: any) => g.verification_status === "APPROVED"));
+                    setApplications(myApps);
+                    setAssociations(myAssocs);
                 } else if (user.role === "GYM_ADMIN" && contextProfile?.id) {
                     const prof = await api.gyms.get(contextProfile.id);
                     setLocalProfile(prof);
@@ -148,6 +184,34 @@ export default function SettingsPage() {
         }
     };
 
+    const handleApply = async (gymId: number) => {
+        if (!contextProfile?.id) return;
+        setApplying(gymId);
+        try {
+            await api.gymApplications.create(gymId, "I would like to join your gym as a trainer.");
+            toast.success("Application submitted!");
+            const apps = await api.gymApplications.list();
+            setApplications(apps);
+        } catch (error) {
+            toast.error("Failed to apply. Make sure your profile is APPROVED.");
+        } finally {
+            setApplying(null);
+        }
+    };
+
+    const getStatus = (gymId: number) => {
+        const assoc = associations.find((a: any) => a.gym_id === gymId || a.gym?.id === gymId);
+        if (assoc) return { state: "ASSOCIATED", label: assoc.status || "Active", color: "bg-emerald-500" };
+
+        const app = applications.find((a: any) => a.gym_id === gymId);
+        if (app) {
+            if (app.status === "APPROVED") return { state: "ASSOCIATED", label: "Approved", color: "bg-emerald-500" };
+            if (app.status === "REJECTED") return { state: "REJECTED", label: "Rejected", color: "bg-destructive" };
+            return { state: "PENDING", label: "Pending", color: "bg-amber-500" };
+        }
+        return { state: "NONE", label: "Apply", color: "bg-primary" };
+    };
+
     const toggleSpecialization = (spec: string) => {
         const current = localProfile?.specializations || [];
         let updated;
@@ -178,9 +242,10 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-8">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className={`grid w-full mb-8 ${user.role === "TRAINER" ? "grid-cols-4" : "grid-cols-3"}`}>
                     <TabsTrigger value="profile">Profile</TabsTrigger>
+                    {user.role === "TRAINER" && <TabsTrigger value="associations">Associations</TabsTrigger>}
                     <TabsTrigger value="account">Account</TabsTrigger>
                     <TabsTrigger value="security">Security</TabsTrigger>
                 </TabsList>
@@ -241,6 +306,80 @@ export default function SettingsPage() {
                         </form>
                     )}
                 </TabsContent>
+
+                {/* --- ASSOCIATIONS TAB --- */}
+                {user.role === "TRAINER" && (
+                    <TabsContent value="associations" className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {gyms.length === 0 ? (
+                                <div className="col-span-full py-12 text-center text-muted-foreground border rounded-xl bg-card">
+                                    No gyms available in the network currently.
+                                </div>
+                            ) : (
+                                gyms.map((gym) => {
+                                    const { state, label, color } = getStatus(gym.id);
+                                    return (
+                                        <Card key={gym.id} className="relative overflow-hidden group">
+                                            <div className="p-6 space-y-4">
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div>
+                                                        <h3 className="font-semibold text-xl group-hover:text-primary transition-colors">
+                                                            {gym.name}
+                                                        </h3>
+                                                        <div className="flex items-center text-muted-foreground text-sm mt-1">
+                                                            <MapPin className="w-4 h-4 mr-1" />
+                                                            {gym.location}
+                                                        </div>
+                                                    </div>
+                                                    <Badge className={color}>{label}</Badge>
+                                                </div>
+
+                                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                                    {gym.description || "No description provided."}
+                                                </p>
+
+                                                <div className="pt-4 border-t flex justify-end">
+                                                    {state === "NONE" && (
+                                                        <Button
+                                                            variant="default"
+                                                            disabled={applying === gym.id || contextProfile?.verification_status !== "APPROVED"}
+                                                            onClick={() => handleApply(gym.id)}
+                                                        >
+                                                            {applying === gym.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                            ) : (
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                            )}
+                                                            {contextProfile?.verification_status !== "APPROVED" ? "Verification Required" : "Apply"}
+                                                        </Button>
+                                                    )}
+                                                    {state === "PENDING" && (
+                                                        <Button variant="outline" disabled>
+                                                            <Clock className="h-4 w-4 mr-2" />
+                                                            Application Submitted
+                                                        </Button>
+                                                    )}
+                                                    {state === "ASSOCIATED" && (
+                                                        <Button variant="outline" className="text-emerald-500 border-emerald-200" disabled>
+                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                            Active
+                                                        </Button>
+                                                    )}
+                                                    {state === "REJECTED" && (
+                                                        <Button variant="outline" className="text-destructive border-destructive" disabled>
+                                                            <XCircle className="h-4 w-4 mr-2" />
+                                                            Rejected
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </TabsContent>
+                )}
 
                 {/* --- ACCOUNT TAB --- */}
                 <TabsContent value="account">
