@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
-import { Badge } from "@/components/ui/badge"
 import { Loader2, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 

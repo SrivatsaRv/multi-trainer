@@ -7,8 +7,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { api } from "@/lib/api";
-import { setAuthToken } from "@/lib/session";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
@@ -24,7 +22,7 @@ const loginSchema = z.object({
 
 export function LoginForm() {
     const router = useRouter();
-    const { user, login } = useAuth();
+    const { user } = useAuth();
 
     // Redirect if already authenticated
     useEffect(() => {
@@ -60,7 +58,7 @@ export function LoginForm() {
                 // eslint-disable-next-line react-hooks/immutability
                 window.location.href = "/dashboard";
             }
-        } catch (error: any) {
+        } catch (_error: unknown) {
             toast.error("Something went wrong");
         }
     }

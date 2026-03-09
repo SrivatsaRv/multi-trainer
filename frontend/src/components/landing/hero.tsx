@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Zap, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 export function LandingHero() {
     return (

@@ -3,17 +3,12 @@
 import { useEffect, useState } from "react"
 import {
     Calendar,
-    Plus,
     Search,
-    Filter,
-    Clock,
     User,
-    CheckCircle2,
-    XCircle,
     Loader2,
     CalendarDays
 } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -28,23 +23,6 @@ import {
 import { api } from "@/lib/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-    DialogDescription
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select"
 import { CreateBookingDialog } from "@/components/dashboard/create-booking-dialog"
 
 import React from "react"

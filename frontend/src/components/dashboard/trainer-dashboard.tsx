@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import { User, Calendar, Star, DollarSign, Clock, Award, Package, TrendingUp } from "lucide-react";
+import { User, Calendar, Star, DollarSign, Award, Package } from "lucide-react";
 
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { TrainerTodayView } from "./trainer-today-view";
 import { api } from "@/lib/api";
 
 export function TrainerDashboard() {
-    const { user, profile, logout } = useAuth();
+    const { user, profile } = useAuth();
     const router = useRouter();
     const status = profile?.verification_status || "NONE";
     const [sessions, setSessions] = useState([]);
@@ -210,6 +210,7 @@ export function TrainerDashboard() {
             {/* Upcoming Sessions */}
             <TrainerTodayView
                 trainerId={profile?.id || 0}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 sessions={sessions.filter((s: any) => {
                     const sDate = new Date(s.start_time);
                     const today = new Date();

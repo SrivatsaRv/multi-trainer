@@ -12,7 +12,6 @@ import {
     LineChart,
     Shield,
     Clock,
-    Building,
     User,
     CreditCard
 } from "lucide-react";

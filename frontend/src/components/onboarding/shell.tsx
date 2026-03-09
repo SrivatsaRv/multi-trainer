@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface OnboardingShellProps {
     title: string;
@@ -18,7 +17,6 @@ export function OnboardingShell({
     themeColor,
     children
 }: OnboardingShellProps) {
-    const isEmerald = themeColor === "emerald";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">

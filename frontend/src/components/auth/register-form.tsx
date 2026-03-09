@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { setAuthToken } from "@/lib/session";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 const registerSchema = z.object({
@@ -33,7 +31,7 @@ interface RegisterFormProps {
 
 export function RegisterForm({ defaultRole }: RegisterFormProps) {
     const router = useRouter();
-    const { user, login } = useAuth();
+    const { user } = useAuth();
 
     const form = useForm<z.infer<typeof registerSchema>>({
         resolver: zodResolver(registerSchema),
@@ -58,7 +56,7 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
     }
 
     async function onSubmit(values: z.infer<typeof registerSchema>) {
-        const { confirmPassword, ...payload } = values;
+        const { confirmPassword: _confirmPassword, ...payload } = values;
         try {
             // 1. Register the user via API
             const response = await api.auth.register(payload);
@@ -82,13 +80,12 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
                     router.push("/auth/login");
                 }
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error.message || "Registration failed");
+            toast.error(error instanceof Error ? error.message : "Registration failed");
         }
     }
 
-    const isLoading = form.formState.isSubmitting;
 
     return (
         <Form {...form}>

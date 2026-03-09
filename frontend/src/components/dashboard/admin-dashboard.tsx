@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { Shield, Users, Building, TrendingUp, Calendar } from "lucide-react";
+import { Users, Building, Calendar } from "lucide-react";
 
 interface AdminMetrics {
     metrics: {
@@ -17,7 +17,6 @@ interface AdminMetrics {
 }
 
 export function AdminDashboard() {
-    const { user } = useAuth();
     const router = useRouter();
     const [data, setData] = useState<AdminMetrics | null>(null);
     const [loading, setLoading] = useState(true);
@@ -26,7 +25,7 @@ export function AdminDashboard() {
         async function fetchAnalytics() {
             try {
                 const token = localStorage.getItem("token")
-                const headers: any = {}
+                const headers: Record<string, string> = {}
                 if (token) headers["Authorization"] = `Bearer ${token}`
 
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/admin/overview`, { headers })

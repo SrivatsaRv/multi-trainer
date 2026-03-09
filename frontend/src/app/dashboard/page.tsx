@@ -1,13 +1,12 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/ui/button";
 import { GymDashboard } from "@/components/dashboard/gym-dashboard";
 import { TrainerDashboard } from "@/components/dashboard/trainer-dashboard";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 
 export default function Dashboard() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
 
     if (!user) return null; // Auth context handles redirect
 

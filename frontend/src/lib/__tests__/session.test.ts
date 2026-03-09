@@ -2,7 +2,7 @@
  * Comprehensive unit tests for session management utilities
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   setAuthToken,
   getAuthToken,

@@ -2,30 +2,14 @@
 
 import { useEffect, useState } from "react"
 import {
-    Users,
     UserCheck,
     UserPlus,
-    Clock,
-    ExternalLink,
-    CheckCircle2,
-    XCircle,
-    UserCircle,
     Loader2
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
-import Link from "next/link"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TrainerRoster } from "@/components/dashboard/trainer-roster"
 import { JoinRequests } from "@/components/dashboard/join-requests"
