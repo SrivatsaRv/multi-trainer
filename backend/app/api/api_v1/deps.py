@@ -49,3 +49,23 @@ def get_current_user(
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return user
+
+
+def require_role(*allowed_roles: str):
+    """
+    Dependency factory: restricts access to users with one of the
+    specified roles. Usage:
+        current_user: User = Depends(require_role("GYM_ADMIN", "SAAS_ADMIN"))
+    """
+
+    def _guard(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient privileges",
+            )
+        return current_user
+
+    return _guard
