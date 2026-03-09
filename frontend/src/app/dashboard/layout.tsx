@@ -1,6 +1,5 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Separator } from "@/components/ui/separator";
 
 export default function DashboardLayout({
     children,

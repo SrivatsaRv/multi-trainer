@@ -3,9 +3,7 @@ import { NextResponse } from "next/server"
 
 export default withAuth(
     async function middleware(req) {
-        const token = req.nextauth.token
-        const isAuth = !!token
-        const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
+        const _token = req.nextauth.token
 
         // Industry Standard: Middleware should handle PROTECTION (authorized).
         // Application logic (Layouts/Pages) or AuthProvider should handle 

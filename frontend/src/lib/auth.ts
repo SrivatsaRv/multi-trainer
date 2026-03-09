@@ -90,11 +90,9 @@ export const authOptions: NextAuthOptions = {
         },
         async session({ session, token }) {
             if (session.user) {
-                // @ts-ignore
                 session.user.role = token.role;
-                // @ts-ignore
                 session.user.id = token.id as string;
-                // @ts-ignore
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (session.user as any).accessToken = token.accessToken;
             }
             return session;

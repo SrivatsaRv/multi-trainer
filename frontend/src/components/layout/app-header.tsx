@@ -1,17 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Dumbbell, Menu } from "lucide-react";
-import { useEffect, useState } from "react";
-import { decodeToken, getAuthToken, clearAuthToken } from "@/lib/session";
+import { LogOut, User, Menu } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/layout/sidebar";
 
 export function AppHeader() {
-    const router = useRouter();
     const pathname = usePathname();
     const { user, profile, logout } = useAuth();
 

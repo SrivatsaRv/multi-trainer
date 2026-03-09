@@ -1,9 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MapPin, User, CheckCircle, XCircle } from "lucide-react"
+import { Clock, MapPin, User, CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface Session {
@@ -13,6 +12,7 @@ interface Session {
     end_time: string
     status: string
     gym: { name: string; location: string }
+    notes?: string
 }
 
 interface TrainerTodayViewProps {
@@ -56,10 +56,10 @@ export function TrainerTodayView({ sessions, trainerId }: TrainerTodayViewProps)
                                     <MapPin className="h-3 w-3" />
                                     {session.gym.name}
                                 </div>
-                                {(session as any).notes && (
+                                {session.notes && (
                                     <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
                                         <CheckCircle className="h-3 w-3" />
-                                        {(session as any).notes}
+                                        {session.notes}
                                     </div>
                                 )}
                             </div>

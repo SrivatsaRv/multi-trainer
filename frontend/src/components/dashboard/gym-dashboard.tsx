@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import { MapPin, Users, Calendar, Star, TrendingUp, Clock } from "lucide-react";
+import { MapPin, Users, Calendar, TrendingUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -23,10 +23,11 @@ import {
 } from "recharts";
 
 export function GymDashboard() {
-    const { user, profile, logout } = useAuth();
+    const { user, profile } = useAuth();
     const router = useRouter();
     const status = profile?.verification_status || "NONE";
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [analytics, setAnalytics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [selectedTrainer, setSelectedTrainer] = useState<number | null>(null);
@@ -38,6 +39,7 @@ export function GymDashboard() {
             // If profile is missing, don't stay in loading forever
             setLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.id]);
 
     const fetchAnalytics = async () => {
@@ -67,6 +69,7 @@ export function GymDashboard() {
 
     if (loading) return <div className="flex flex-col items-center justify-center p-24 gap-4"><Clock className="animate-spin w-8 h-8 text-primary" /><p className="text-muted-foreground animate-pulse">Loading Facility Dashboard...</p></div>;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trainerChartData = analytics?.trainer_stats.map((t: any) => ({
         name: t.name,
         revenue: t.business_value,
@@ -219,7 +222,9 @@ export function GymDashboard() {
                 <CardContent>
                     <div className="space-y-4">
                         {analytics?.trainer_stats
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             .filter((t: any) => !selectedTrainer || t.trainer_id === selectedTrainer)
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             .map((t: any) => (
                                 <div key={t.trainer_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center gap-3">

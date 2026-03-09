@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/auth-context";
 import { OnboardingShell } from "@/components/onboarding/shell";
 import { TrainerOnboardingForm } from "@/components/forms/trainer-onboarding-form";
-import { User, ShieldCheck } from "lucide-react";
+import { User } from "lucide-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 

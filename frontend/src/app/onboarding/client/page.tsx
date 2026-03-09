@@ -32,7 +32,7 @@ import {
 } from "lucide-react"
 
 export default function ClientOnboardingPage() {
-    const { user, profile } = useAuth()
+    const { user } = useAuth()
     const router = useRouter()
     const [step, setStep] = useState(1)
     const [saving, setSaving] = useState(false)

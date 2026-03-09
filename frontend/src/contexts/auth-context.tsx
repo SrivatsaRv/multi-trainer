@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { api } from "@/lib/api";
-import { getAuthToken, clearAuthToken, setAuthToken } from "@/lib/session";
+import { clearAuthToken, setAuthToken } from "@/lib/session";
 import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 
 interface User {
@@ -17,6 +17,7 @@ interface User {
 interface Profile {
   id: string;
   verification_status: "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (status === "loading" || (status === "authenticated" && user)) return;
 
     if (status === "authenticated" && session?.user) {
-      const accessToken = (session.user as any).accessToken;
+      const accessToken = (session.user as Record<string, unknown>).accessToken as string;
       const isAuthPage = pathname.startsWith("/auth");
 
       if (accessToken) {

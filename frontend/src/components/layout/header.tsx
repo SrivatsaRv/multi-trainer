@@ -1,14 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, LogOut, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
 export function Header() {
-    const router = useRouter();
-    const pathname = usePathname();
     const { user, logout } = useAuth();
 
     const handleLogout = () => {
