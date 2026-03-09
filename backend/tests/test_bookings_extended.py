@@ -69,7 +69,9 @@ def test_get_occupied_slots_api(
     session.commit()
 
     # 1. READ Occupied Slots (No filters) -> Will auto-scope to trainer's slots
-    response = client.get("/api/v1/bookings/occupied-slots", headers=trainer_user_token_headers)
+    response = client.get(
+        "/api/v1/bookings/occupied-slots", headers=trainer_user_token_headers
+    )
     assert response.status_code == 200
     slots = response.json()
     assert len(slots) >= 1
@@ -78,7 +80,7 @@ def test_get_occupied_slots_api(
     # 2. READ Occupied Slots (Filter by trainer)
     response = client.get(
         f"/api/v1/bookings/occupied-slots?trainer_id={trainer.id}",
-        headers=trainer_user_token_headers
+        headers=trainer_user_token_headers,
     )
     assert response.status_code == 200
     assert all(s["id"] == booking.id or True for s in response.json())  # Basic check

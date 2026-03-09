@@ -84,10 +84,13 @@ def test_client_profile_permissions(
     headers = {"Authorization": f"Bearer {token}"}
 
     # Setup necessary RBAC relations for GYM_ADMIN to read client profile
-    gym = Gym(name="Test Gym", slug="test-gym-admin", location="Test", admin_id=test_user.id)
+    gym = Gym(
+        name="Test Gym", slug="test-gym-admin", location="Test", admin_id=test_user.id
+    )
     session.add(gym)
     session.flush()
     from app.models.subscription import ClientSubscription, SubscriptionStatus
+
     sub = ClientSubscription(
         user_id=client_user.id,
         gym_id=gym.id,
