@@ -7,8 +7,8 @@ from sqlmodel import Session, select
 
 from app.api.api_v1.deps import get_current_user
 from app.db.session import get_session
-from app.models.associations import (AssociationStatus,  # noqa: F401
-                                     ClientTrainer, GymTrainer)
+from app.models.associations import AssociationStatus  # noqa: F401
+from app.models.associations import ClientTrainer, GymTrainer
 from app.models.booking import (Booking, BookingStatus,  # noqa: F401
                                 SessionPackage)
 from app.models.gym import Gym  # noqa: F401
@@ -17,8 +17,8 @@ from app.models.subscription import (ClientSubscription,  # noqa: F401
 from app.models.trainer import Trainer, TrainerCreate, TrainerUpdate
 from app.models.user import User as UserModel
 from app.models.user import UserRole
-from app.models.workout import (Exercise, WorkoutSessionExercise,  # noqa: F401
-                                WorkoutSet)
+from app.models.workout import WorkoutSessionExercise  # noqa: F401
+from app.models.workout import Exercise, WorkoutSet
 
 
 class ClientOnboardSchema(BaseModel):

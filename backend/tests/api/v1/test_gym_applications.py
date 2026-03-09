@@ -1,12 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
-from app.models.gym import Gym, VerificationStatus as GymVerificationStatus
+
+from app.core.security import get_password_hash
+from app.models.associations import AssociationStatus, GymTrainer
+from app.models.gym import Gym
+from app.models.gym import VerificationStatus as GymVerificationStatus
+from app.models.gym_application import ApplicationStatus, GymApplication
 from app.models.trainer import Trainer
 from app.models.user import User, UserRole
-from app.models.gym_application import GymApplication, ApplicationStatus
-from app.models.associations import GymTrainer, AssociationStatus
-from app.core.security import get_password_hash
+
 
 # Helper to create a gym admin
 def create_gym_admin_and_gym(client, session):
@@ -26,7 +29,7 @@ def create_gym_admin_and_gym(client, session):
         slug="test-gym-app",
         location="Somewhere",
         admin_id=admin.id,
-        verification_status=GymVerificationStatus.APPROVED
+        verification_status=GymVerificationStatus.APPROVED,
     )
     session.add(test_gym)
     session.commit()
@@ -36,8 +39,9 @@ def create_gym_admin_and_gym(client, session):
     response = client.post("/api/v1/auth/access-token", data=login_data)
     token = response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
-    
+
     return test_gym, headers
+
 
 def test_unverified_trainer_cannot_apply(
     client: TestClient, session: Session, trainer_user_token_headers: dict, trainer_data
@@ -68,7 +72,7 @@ def test_cannot_apply_to_unverified_gym(
     trainer = session.exec(select(Trainer)).first()
     trainer.verification_status = GymVerificationStatus.APPROVED
     session.add(trainer)
-    
+
     # Ensure gym is NOT approved
     test_gym.verification_status = GymVerificationStatus.PENDING
     session.add(test_gym)
@@ -135,8 +139,7 @@ def test_gym_admin_approval_creates_association(
     # Verify GymTrainer association was created atomically
     assoc = session.exec(
         select(GymTrainer).where(
-            GymTrainer.gym_id == test_gym.id,
-            GymTrainer.trainer_id == trainer.id
+            GymTrainer.gym_id == test_gym.id, GymTrainer.trainer_id == trainer.id
         )
     ).first()
     assert assoc is not None
@@ -152,8 +155,12 @@ def test_gym_admin_rejection_deletes_association(
     trainer = session.exec(select(Trainer)).first()
 
     # Create application directly as APPROVED and insert Association
-    app = GymApplication(gym_id=test_gym.id, trainer_id=trainer.id, status=ApplicationStatus.APPROVED)
-    assoc = GymTrainer(gym_id=test_gym.id, trainer_id=trainer.id, status=AssociationStatus.ACTIVE)
+    app = GymApplication(
+        gym_id=test_gym.id, trainer_id=trainer.id, status=ApplicationStatus.APPROVED
+    )
+    assoc = GymTrainer(
+        gym_id=test_gym.id, trainer_id=trainer.id, status=AssociationStatus.ACTIVE
+    )
     session.add(app)
     session.add(assoc)
     session.commit()
@@ -170,8 +177,7 @@ def test_gym_admin_rejection_deletes_association(
     # Verify GymTrainer association was deleted
     deleted_assoc = session.exec(
         select(GymTrainer).where(
-            GymTrainer.gym_id == test_gym.id,
-            GymTrainer.trainer_id == trainer.id
+            GymTrainer.gym_id == test_gym.id, GymTrainer.trainer_id == trainer.id
         )
     ).first()
     assert deleted_assoc is None

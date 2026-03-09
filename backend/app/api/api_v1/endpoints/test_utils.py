@@ -39,6 +39,10 @@ def purge_test_user(
     if user.gym:
         gid = user.gym.id
         session.execute(
+            text("DELETE FROM gymapplication WHERE gym_id = :gid"), {"gid": gid}
+        )
+        session.execute(text("DELETE FROM booking WHERE gym_id = :gid"), {"gid": gid})
+        session.execute(
             text("DELETE FROM clientsubscription WHERE gym_id = :gid"), {"gid": gid}
         )
         session.execute(
@@ -51,8 +55,51 @@ def purge_test_user(
     if user.trainer:
         tid = user.trainer.id
         session.execute(
+            text("DELETE FROM gymapplication WHERE trainer_id = :tid"), {"tid": tid}
+        )
+        session.execute(
+            text("DELETE FROM certificate WHERE trainer_id = :tid"), {"tid": tid}
+        )
+        session.execute(
+            text("DELETE FROM booking WHERE trainer_id = :tid"), {"tid": tid}
+        )
+        session.execute(
             text("DELETE FROM gymtrainer WHERE trainer_id = :tid"), {"tid": tid}
         )
+        session.execute(
+            text("DELETE FROM clienttrainer WHERE trainer_id = :tid"), {"tid": tid}
+        )
+
+        # Cleanup trainer workouts
+        session.execute(
+            text(
+                "DELETE FROM workoutlog WHERE session_id IN "
+                "(SELECT id FROM workoutsession WHERE trainer_id = :tid)"
+            ),
+            {"tid": tid},
+        )
+        session.execute(
+            text(
+                "DELETE FROM workoutset WHERE exercise_id IN "
+                "(SELECT id FROM workoutsessionexercise WHERE session_id IN "
+                "(SELECT id FROM workoutsession WHERE trainer_id = :tid))"
+            ),
+            {"tid": tid},
+        )
+        session.execute(
+            text(
+                "DELETE FROM workoutsessionexercise WHERE session_id IN "
+                "(SELECT id FROM workoutsession WHERE trainer_id = :tid)"
+            ),
+            {"tid": tid},
+        )
+        session.execute(
+            text("DELETE FROM workoutsession WHERE trainer_id = :tid"), {"tid": tid}
+        )
+        session.execute(
+            text("DELETE FROM workouttemplate WHERE trainer_id = :tid"), {"tid": tid}
+        )
+
         session.delete(user.trainer)
 
     session.delete(user)
