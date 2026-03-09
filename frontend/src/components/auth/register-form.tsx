@@ -44,12 +44,7 @@ export function RegisterForm({ defaultRole }: RegisterFormProps) {
         },
     });
 
-    // Redirect if already authenticated
-    useEffect(() => {
-        if (user) {
-            router.replace("/dashboard");
-        }
-    }, [user, router]);
+    // Redirect logic moved to AuthProvider for centralization
 
     if (user) {
         return null;

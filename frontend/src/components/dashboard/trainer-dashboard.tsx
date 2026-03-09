@@ -168,7 +168,7 @@ export function TrainerDashboard() {
                         </Button>
                         <Button
                             variant="default"
-                            onClick={() => router.push(`/dashboard/trainer/gyms`)}
+                            onClick={() => router.push(`/dashboard/settings`)}
                         >
                             Find Gym
                         </Button>

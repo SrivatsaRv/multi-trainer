@@ -22,10 +22,10 @@ test.describe('Trainer Template Loading Flow', () => {
         await page.click('a:has-text("Sessions")');
 
         // 3. Select a Session
-        // Wait for table to load
-        await expect(page.locator('table')).toBeVisible();
-        // Click the first "View" button or row
-        await page.click('tbody tr:first-child button:has-text("View")');
+        // Wait for sessions to load
+        await page.waitForTimeout(1000);
+        // Click the first session
+        await page.locator('div[tabindex="0"]').first().click();
 
         // 4. Load Template
         // Verify we are on detail page

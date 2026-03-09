@@ -117,7 +117,18 @@ export function GymDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="font-bold truncate">{profile?.name || "Unnamed"}</div>
-                        <div className="mt-1">{getStatusBadge(status)}</div>
+                        <div className="mt-1 flex flex-col gap-2">
+                            {getStatusBadge(status)}
+                            {(status === "NONE" || status === "DRAFT") && (
+                                <Button
+                                    size="sm"
+                                    className="h-7 text-[10px] mt-1"
+                                    onClick={() => router.push("/auth/onboarding/gym")}
+                                >
+                                    Complete Profile
+                                </Button>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 

@@ -16,7 +16,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.get("/", response_model=List[GymApplication])
+@router.get("", response_model=List[GymApplication])
 def read_applications(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -33,7 +33,7 @@ def read_applications(
     return trainer.gym_applications
 
 
-@router.post("/", response_model=GymApplication, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=GymApplication, status_code=status.HTTP_201_CREATED)
 def create_application(
     application_in: GymApplicationCreate,
     session: Session = Depends(get_session),
@@ -47,6 +47,16 @@ def create_application(
     ).first()
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer profile not found")
+    if trainer.verification_status != "APPROVED":
+        raise HTTPException(
+            status_code=403, detail="Trainer profile must be APPROVED to apply to a gym"
+        )
+
+    gym = session.get(Gym, application_in.gym_id)
+    if not gym:
+        raise HTTPException(status_code=404, detail="Gym not found")
+    if gym.verification_status != "APPROVED":
+        raise HTTPException(status_code=400, detail="Cannot apply to an unapproved gym")
 
     # Check max gyms (active associations)
     active_gyms_count = session.exec(
@@ -198,7 +208,10 @@ def update_application_status(
     if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    if status_update.status == ApplicationStatus.APPROVED:
+    if (
+        status_update.status == ApplicationStatus.APPROVED
+        and application.status != ApplicationStatus.APPROVED
+    ):
         # Create Association
         new_assoc = GymTrainer(
             gym_id=gym.id,
@@ -206,6 +219,20 @@ def update_application_status(
             status=AssociationStatus.ACTIVE,
         )
         session.add(new_assoc)
+    elif (
+        status_update.status != ApplicationStatus.APPROVED
+        and application.status == ApplicationStatus.APPROVED
+    ):
+        # If un-approving, delete active association to maintain consistency
+        existing_assoc = session.exec(
+            select(GymTrainer).where(
+                GymTrainer.gym_id == gym.id,
+                GymTrainer.trainer_id == application.trainer_id,
+                GymTrainer.status == AssociationStatus.ACTIVE,
+            )
+        ).first()
+        if existing_assoc:
+            session.delete(existing_assoc)
 
     application.status = status_update.status
     session.add(application)

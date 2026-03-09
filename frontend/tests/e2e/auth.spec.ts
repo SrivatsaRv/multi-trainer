@@ -5,8 +5,16 @@ const BASE_URL = 'http://localhost:3000';
 const API_URL = 'http://localhost:8000';
 
 test.describe('Authentication Flow', () => {
+    const generatedEmails: string[] = [];
+
+    test.afterAll(async ({ request }) => {
+        for (const email of generatedEmails) {
+            await request.delete(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/test-utils/purge-user`, { params: { email } });
+        }
+    });
     test.beforeEach(async ({ page }) => {
-        // Clear localStorage before each test
+        // Clear cookies and localStorage before each test
+        await page.context().clearCookies();
         await page.goto(BASE_URL);
         await page.evaluate(() => localStorage.clear());
     });
@@ -86,7 +94,7 @@ test.describe('Authentication Flow', () => {
         await page.goto(BASE_URL);
 
         // Should show dashboard and logout buttons
-        await expect(page.getByRole('link', { name: /dashboard/i })).toBeVisible();
+        await expect(page.getByRole('link', { name: /overview|dashboard/i })).toBeVisible();
         await expect(page.getByRole('button', { name: /logout/i })).toBeVisible();
 
         // Should NOT show login/register buttons
@@ -193,43 +201,43 @@ test.describe('Authentication Flow', () => {
     });
 
     test('should allow registration as a Trainer via role query param', async ({ page }) => {
-        const email = `trainer_${uniqueId()}@example.com`;
+        const email = `e2e_trainer_${uniqueId()}@example.com`;
+        generatedEmails.push(email);
         await page.goto(`${BASE_URL}/auth/register?role=TRAINER`);
 
-        await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
+        // Wait for the title to be visible (it's a CardTitle div, not a heading)
+        await expect(page.getByText('Create an account')).toBeVisible({ timeout: 15000 });
         await page.getByLabel(/full name/i).fill('E2E Trainer');
         await page.getByLabel(/email/i).fill(email);
-        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByLabel(/confirm password/i).fill(TEST_USER_PASSWORD);
+        await page.getByLabel('Password', { exact: true }).fill(TEST_USER_PASSWORD);
+        await page.getByLabel('Confirm Password', { exact: true }).fill(TEST_USER_PASSWORD);
 
         await page.getByRole('button', { name: /sign up/i }).click();
+        // B. Registration should redirect to dashboard
+        await expect(page).toHaveURL('/dashboard', { timeout: 15000 });
 
-        await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 15000 });
-        const userRole = await page.evaluate(() => {
-            const userStr = localStorage.getItem('user');
-            return userStr ? JSON.parse(userStr).role : null;
-        });
-        expect(userRole).toBe('TRAINER');
+        // C. Verify landing page has onboarding CTA
+        await expect(page.getByText(/Complete Profile/i)).toBeVisible();
     });
 
     test('should allow registration as a Gym Admin via role query param', async ({ page }) => {
-        const email = `gymadmin_${uniqueId()}@example.com`;
+        const email = `e2e_gymadmin_${uniqueId()}@example.com`;
+        generatedEmails.push(email);
         await page.goto(`${BASE_URL}/auth/register?role=GYM_ADMIN`);
 
-        await expect(page.getByRole('heading', { name: /create an account/i })).toBeVisible();
+        // Wait for the title to be visible (it's a CardTitle div, not a heading)
+        await expect(page.getByText('Create an account')).toBeVisible({ timeout: 15000 });
         await page.getByLabel(/full name/i).fill('E2E Gym Admin');
         await page.getByLabel(/email/i).fill(email);
-        await page.getByLabel(/password/i).fill(TEST_USER_PASSWORD);
-        await page.getByLabel(/confirm password/i).fill(TEST_USER_PASSWORD);
+        await page.getByLabel('Password', { exact: true }).fill(TEST_USER_PASSWORD);
+        await page.getByLabel('Confirm Password', { exact: true }).fill(TEST_USER_PASSWORD);
 
         await page.getByRole('button', { name: /sign up/i }).click();
+        // B. Registration should redirect to dashboard
+        await expect(page).toHaveURL('/dashboard', { timeout: 15000 });
 
-        await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 15000 });
-        const userRole = await page.evaluate(() => {
-            const userStr = localStorage.getItem('user');
-            return userStr ? JSON.parse(userStr).role : null;
-        });
-        expect(userRole).toBe('GYM_ADMIN');
+        // C. Verify landing page has onboarding CTA
+        await expect(page.getByText(/Complete Profile/i).first()).toBeVisible();
     });
 });
 

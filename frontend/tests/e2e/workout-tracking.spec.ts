@@ -3,6 +3,9 @@ import { TEST_USER_PASSWORD } from '../test-constants';
 
 test.describe('Workout Tracking & Client Analytics', () => {
     test.beforeEach(async ({ page }) => {
+        // Clear cookies and localStorage to prevent session bleed
+        await page.context().clearCookies();
+
         // Increase expect timeout for slow dev env
         expect.configure({ timeout: 30000 });
 
@@ -14,14 +17,16 @@ test.describe('Workout Tracking & Client Analytics', () => {
         await page.fill('input[name="username"]', 'tr_active@example.com');
         await page.fill('input[name="password"]', TEST_USER_PASSWORD);
         await page.getByRole('button', { name: /sign in/i }).click();
-        await expect(page).toHaveURL(/dashboard/, { timeout: 30000 });
+
+        // Wait for absolute transition
+        await page.waitForURL(/\/dashboard/);
+        await page.waitForLoadState('networkidle');
     });
 
     test('should allow trainer to log per-set results and view analytics', async ({ page }) => {
         // 1. Navigate to a session from Dashboard (Today's View)
         // Wait for Today's Schedule to appear
-        await expect(page.getByText("Today's Schedule")).toBeVisible();
-        await page.waitForLoadState('networkidle');
+        await expect(page.getByRole('heading', { name: "Today's Schedule" })).toBeVisible();
 
         // Verify there are sessions (not the empty state)
         // If this fails, the seed script didn't generate a session for TODAY.

@@ -13,7 +13,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Certificate])
+@router.get("", response_model=List[Certificate])
 def read_certificates(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -30,7 +30,7 @@ def read_certificates(
     return trainer.certificates
 
 
-@router.post("/", response_model=Certificate, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Certificate, status_code=status.HTTP_201_CREATED)
 def create_certificate(
     certificate_in: CertificateCreate,
     session: Session = Depends(get_session),

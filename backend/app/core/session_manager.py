@@ -28,6 +28,10 @@ def create_user_session(
     ).all()
 
     for existing in existing_sessions:
+        print(
+            f"[SessionManager] Invalidating existing session {existing.id} "
+            f"for user {user_id}"
+        )
         session.delete(existing)
 
     session.flush()  # Ensure deletes are processed before insert
@@ -58,6 +62,7 @@ def create_user_session(
 
     session.add(user_session)
     session.commit()
+    print(f"[SessionManager] Created new session {user_session.id} for user {user_id}")
     session.refresh(user_session)
 
     return user_session

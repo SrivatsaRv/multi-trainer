@@ -12,7 +12,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Gym])
+@router.get("", response_model=List[Gym])
 def read_gyms(
     session: Session = Depends(get_session),
     skip: int = 0,
@@ -22,7 +22,7 @@ def read_gyms(
     return gyms
 
 
-@router.post("/", response_model=Gym, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Gym, status_code=status.HTTP_201_CREATED)
 def create_gym(
     gym_in: GymCreate,
     session: Session = Depends(get_session),

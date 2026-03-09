@@ -45,9 +45,13 @@ export function JoinRequests({ applications, onAction }: JoinRequestsProps) {
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Reject
                             </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onAction(app.id, "APPROVED")}>
+                            <Button
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={() => onAction(app.id, "APPROVED")}
+                                disabled={app.trainer?.verification_status !== "APPROVED"}
+                            >
                                 <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Approve
+                                {app.trainer?.verification_status !== "APPROVED" ? "Unverified" : "Approve"}
                             </Button>
                             <Button variant="ghost" size="sm" asChild>
                                 <Link href={`/dashboard/trainer/${app.trainer.id}/profile`}>

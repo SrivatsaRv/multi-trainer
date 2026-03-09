@@ -6,11 +6,24 @@ import { TEST_USER_PASSWORD } from './test-constants';
 const uniqueId = () => Math.random().toString(36).substring(7);
 
 test.describe('Gym-Trainer Association Flow', () => {
+    let createdGymEmail = '';
+    let createdTrainerEmail = '';
+
+    test.afterAll(async ({ request }) => {
+        if (createdGymEmail) {
+            await request.delete(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/test-utils/purge-user`, { params: { email: createdGymEmail } });
+        }
+        if (createdTrainerEmail) {
+            await request.delete(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/test-utils/purge-user`, { params: { email: createdTrainerEmail } });
+        }
+    });
 
     test('Gym Admin can invite a trainer', async ({ page }) => {
         // Generate unique emails INSIDE the test to ensure uniqueness on retries
-        const gymEmail = `gym_e2e_${uniqueId()}@example.com`;
-        const trainerEmail = `trainer_e2e_${uniqueId()}@example.com`;
+        const gymEmail = `e2e_gym_${uniqueId()}@example.com`;
+        const trainerEmail = `e2e_trainer_${uniqueId()}@example.com`;
+        createdGymEmail = gymEmail;
+        createdTrainerEmail = trainerEmail;
 
         // 1. Register Trainer (UI Flow)
         await page.goto('/auth/register');
@@ -45,16 +58,24 @@ test.describe('Gym-Trainer Association Flow', () => {
         await expect(page).toHaveURL('/dashboard', { timeout: 15000 });
 
         // 3. Create Gym Profile
-        await page.goto('/onboard-as-gym');
+        await page.goto('/auth/onboarding/gym');
         await page.fill('input[name="name"]', 'E2E Gym');
         await page.fill('input[name="slug"]', `gym-${uniqueId()}`);
         await page.fill('input[name="location"]', 'E2E City');
         await page.click('button[type="submit"]');
 
         // 4. Invite Trainer
-        await page.goto('/dashboard/gym/trainers');
-        await page.click('button:has-text("Invite Trainer")');
+        await page.goto('/dashboard');
+        // Wait for the gym profile to load/resolve gymId
+        await page.waitForLoadState('networkidle');
 
+        // Find Trainers link (might be in sidebar after profile loads)
+        const trainersLink = page.getByRole('link', { name: "Trainers" });
+        await expect(trainersLink).toBeVisible({ timeout: 15000 });
+        await trainersLink.first().click();
+        await page.waitForURL(/\/dashboard\/gym\/\d+\/trainers/);
+
+        await page.click('button:has-text("Invite Trainer")');
         await page.fill('input[placeholder="Trainer\'s Email Address"]', trainerEmail);
         await page.click('button:has-text("Send Invitation")');
 

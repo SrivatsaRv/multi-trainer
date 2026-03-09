@@ -75,7 +75,7 @@ class BookingStatusUpdate(BaseModel):
     status: BookingStatus
 
 
-@router.post("/", response_model=Booking)
+@router.post("", response_model=Booking)
 def create_booking(
     expiry: BookingCreate,
     session: Session = Depends(get_session),

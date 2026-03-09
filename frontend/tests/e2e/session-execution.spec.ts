@@ -11,29 +11,19 @@ test.describe('Trainer Session Execution Flow', () => {
 
         // 2. Verify Dashboard
         await page.waitForLoadState('networkidle');
-        await expect(page).toHaveURL(/dashboard/);
-        // ... (rest of verification)
-        await expect(page.getByRole('link', { name: /sessions/i }).first()).toBeVisible();
+        // 3. Click on a session card from Today's Schedule on the Dashboard
+        // Find Today's Schedule section first
+        const scheduleSection = page.locator('div:has(h2:has-text("Today\'s Schedule"))');
+        await expect(scheduleSection).toBeVisible();
 
-        await page.getByRole('link', { name: /sessions/i }).first().click();
-        await expect(page).toHaveURL(/\/sessions$/);
-
-        // 4. Click on a session card/row
-        // We expect at least one session in the list from seeding
-        const sessionCard = page.locator('div[class*="card"]').first();
-        // Or if it's a table
-        // await page.getByRole('row').nth(1).click();
-
-        // Wait for sessions to load
-        await page.waitForTimeout(1000);
-
-        // If no sessions, we can't test execution.
-        if (await page.getByText('No sessions').isVisible()) {
-            console.log("No sessions found for test trainer. Skipping execution test.");
-            return;
-        }
-
+        // Find a session card within that section (div with card class and a time colon)
+        const sessionCard = scheduleSection.locator('div[class*="card"]').filter({ hasText: /:/ }).first();
+        await expect(sessionCard).toBeVisible();
         await sessionCard.click();
+
+        // 4. Verify navigation to detail page
+        // (Wait handled by sessionCard.click() usually, but be explicit)
+        await page.waitForURL(/\/sessions\/\d+/);
 
         // 5. Verify Session Detail Page
         // URL should contain /sessions/\d+

@@ -19,25 +19,13 @@ test.describe('Trainer Signup Flow', () => {
         // Submit
         await page.click('button[type="submit"]');
 
-        // 3. Verify Redirect to Onboarding
-        // Wait for URL to contain /auth/onboarding/trainer
-        await page.waitForURL(/\/auth\/onboarding\/trainer/);
-
-        // Verify Onboarding Page Content
-        await expect(page.locator('h1')).toContainText('Trainer Profile Setup');
-
-        // 4. Fill Onboarding Form
-        await page.fill('textarea[name="bio"]', 'I am an automated E2E test trainer profile.');
-
-        // Submit
-        await page.click('button[type="submit"]');
-
-        // 5. Verify Redirect to Dashboard
+        // 3. Verify Redirect to Dashboard (Standard flow)
         await page.waitForURL(/\/dashboard/);
 
-        // Verify Dashboard Access
-        await expect(page.locator('body')).toContainText('Overview');
-        // Check if name is displayed (if header has it)
-        // await expect(page.locator('header')).toContainText(TRAINER_NAME); 
+        // 4. Verify Dashboard Access
+        await page.waitForLoadState('networkidle');
+        await expect(page.getByRole('link', { name: /overview|dashboard/i })).toBeVisible();
+        // Onboarding flow will be tested in isolated, authenticated contexts.
+        // During E2E Signup, Auth Context redirects DRAFTs straight to dashboard. 
     });
 });
