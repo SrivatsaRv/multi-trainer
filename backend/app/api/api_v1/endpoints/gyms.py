@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app.api.api_v1.deps import get_current_user
+from app.api.api_v1.deps import get_current_user, require_role
 from app.db.session import get_session
 from app.models.gym import Gym, GymCreate, GymUpdate
 from app.models.user import User
@@ -26,7 +26,7 @@ def read_gyms(
 def create_gym(
     gym_in: GymCreate,
     session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("GYM_ADMIN", "SAAS_ADMIN")),
 ):
     # Check if user already has a gym
     existing_gym = session.exec(
@@ -163,7 +163,7 @@ def invite_trainer(
     gym = session.get(Gym, gym_id)
     if not gym:
         raise HTTPException(status_code=404, detail="Gym not found")
-    if gym.admin_id != current_user.id:
+    if gym.admin_id != current_user.id and current_user.role != "SAAS_ADMIN":
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Validate payload manually if type hint is Any (temporary fallback)

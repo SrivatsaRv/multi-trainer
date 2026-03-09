@@ -83,6 +83,23 @@ def test_client_profile_permissions(
     token = response.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
+    # Setup necessary RBAC relations for GYM_ADMIN to read client profile
+    gym = Gym(name="Test Gym", slug="test-gym-admin", location="Test", admin_id=test_user.id)
+    session.add(gym)
+    session.flush()
+    from app.models.subscription import ClientSubscription, SubscriptionStatus
+    sub = ClientSubscription(
+        user_id=client_user.id,
+        gym_id=gym.id,
+        status=SubscriptionStatus.ACTIVE,
+        total_sessions=10,
+        sessions_used=0,
+        start_date=datetime.now(),
+        expiry_date=datetime.now() + timedelta(days=30),
+    )
+    session.add(sub)
+    session.commit()
+
     # 2. READ client profile as gym admin (should be allowed)
     response = client.get(f"/api/v1/clients/{client_user.id}", headers=headers)
     assert response.status_code == 200

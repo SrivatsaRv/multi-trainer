@@ -33,6 +33,43 @@ def get_occupied_slots(
         UserModel, Booking.user_id == UserModel.id
     )
 
+    if current_user.role != "SAAS_ADMIN":
+        if current_user.role == "TRAINER":
+            from app.models.trainer import Trainer
+
+            trainer_profile = session.exec(
+                select(Trainer).where(Trainer.user_id == current_user.id)
+            ).first()
+            if not trainer_profile:
+                raise HTTPException(status_code=403, detail="Not authorized")
+
+            # Enforce trainer isolation
+            if trainer_id and trainer_id != trainer_profile.id:
+                raise HTTPException(status_code=403, detail="Not authorized")
+            trainer_id = trainer_profile.id
+
+        elif current_user.role == "GYM_ADMIN":
+            from app.models.gym import Gym
+
+            gym_profile = session.exec(
+                select(Gym).where(Gym.admin_id == current_user.id)
+            ).first()
+            if not gym_profile:
+                raise HTTPException(status_code=403, detail="Not authorized")
+
+            # Enforce gym isolation
+            if gym_id and gym_id != gym_profile.id:
+                raise HTTPException(status_code=403, detail="Not authorized")
+            gym_id = gym_profile.id
+
+        elif current_user.role == "CLIENT":
+            # Clients can query, but we strictly require either
+            # trainer_id or gym_id to prevent dumping everything
+            if not trainer_id and not gym_id:
+                raise HTTPException(
+                    status_code=400, detail="Must specify trainer_id or gym_id"
+                )
+
     if trainer_id:
         statement = statement.where(Booking.trainer_id == trainer_id)
     if gym_id:
@@ -52,16 +89,23 @@ def get_occupied_slots(
 
     results = session.exec(statement).all()
 
-    return [
-        {
-            "id": b.id,
-            "start_time": b.start_time,
-            "end_time": b.end_time,
-            "client_name": u.full_name,
-            "status": b.status,
-        }
-        for b, u in results
-    ]
+    response = []
+    for b, u in results:
+        client_name = u.full_name
+        # Mask client name for other clients scheduling to prevent PII leakage
+        if current_user.role == "CLIENT" and current_user.id != u.id:
+            client_name = "Busy"
+
+        response.append(
+            {
+                "id": b.id,
+                "start_time": b.start_time,
+                "end_time": b.end_time,
+                "client_name": client_name,
+                "status": b.status,
+            }
+        )
+    return response
 
 
 class BookingCreate(BaseModel):

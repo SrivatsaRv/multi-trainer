@@ -23,12 +23,45 @@ def read_client_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    if current_user.id != user_id and current_user.role not in [
-        UserRole.SAAS_ADMIN,
-        UserRole.GYM_ADMIN,
-        UserRole.TRAINER,
-    ]:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if current_user.id != user_id and current_user.role != UserRole.SAAS_ADMIN:
+        if current_user.role == UserRole.TRAINER:
+            from app.models.associations import ClientTrainer
+            from app.models.trainer import Trainer
+
+            trainer_profile = session.exec(
+                select(Trainer).where(Trainer.user_id == current_user.id)
+            ).first()
+            if not trainer_profile:
+                raise HTTPException(status_code=403, detail="Not authorized")
+            assoc = session.exec(
+                select(ClientTrainer).where(
+                    ClientTrainer.trainer_id == trainer_profile.id,
+                    ClientTrainer.client_id == user_id,
+                )
+            ).first()
+            if not assoc:
+                raise HTTPException(status_code=403, detail="Not authorized")
+        elif current_user.role == UserRole.GYM_ADMIN:
+            from app.models.gym import Gym
+            from app.models.subscription import (ClientSubscription,
+                                                 SubscriptionStatus)
+
+            gym_profile = session.exec(
+                select(Gym).where(Gym.admin_id == current_user.id)
+            ).first()
+            if not gym_profile:
+                raise HTTPException(status_code=403, detail="Not authorized")
+            sub = session.exec(
+                select(ClientSubscription).where(
+                    ClientSubscription.user_id == user_id,
+                    ClientSubscription.gym_id == gym_profile.id,
+                    ClientSubscription.status == SubscriptionStatus.ACTIVE,
+                )
+            ).first()
+            if not sub:
+                raise HTTPException(status_code=403, detail="Not authorized")
+        else:
+            raise HTTPException(status_code=403, detail="Not authorized")
 
     return profile
 

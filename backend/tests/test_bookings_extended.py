@@ -55,7 +55,7 @@ def test_booking_credit_deduction(
 
 
 def test_get_occupied_slots_api(
-    auth_client: TestClient, session: Session, trainer_data
+    client: TestClient, session: Session, trainer_data, trainer_user_token_headers
 ):
     gym = trainer_data["gym"]
     trainer = trainer_data["trainer"]
@@ -68,16 +68,17 @@ def test_get_occupied_slots_api(
     session.add(booking)
     session.commit()
 
-    # 1. READ Occupied Slots (No filters)
-    response = auth_client.get("/api/v1/bookings/occupied-slots")
+    # 1. READ Occupied Slots (No filters) -> Will auto-scope to trainer's slots
+    response = client.get("/api/v1/bookings/occupied-slots", headers=trainer_user_token_headers)
     assert response.status_code == 200
     slots = response.json()
     assert len(slots) >= 1
     assert any(s["id"] == booking.id for s in slots)
 
     # 2. READ Occupied Slots (Filter by trainer)
-    response = auth_client.get(
-        f"/api/v1/bookings/occupied-slots?trainer_id={trainer.id}"
+    response = client.get(
+        f"/api/v1/bookings/occupied-slots?trainer_id={trainer.id}",
+        headers=trainer_user_token_headers
     )
     assert response.status_code == 200
     assert all(s["id"] == booking.id or True for s in response.json())  # Basic check

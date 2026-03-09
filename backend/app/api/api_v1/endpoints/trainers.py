@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app.api.api_v1.deps import get_current_user
+from app.api.api_v1.deps import get_current_user, require_role
 from app.db.session import get_session
-from app.models.associations import (AssociationStatus,  # noqa: F401
-                                     ClientTrainer, GymTrainer)
+from app.models.associations import AssociationStatus  # noqa: F401
+from app.models.associations import ClientTrainer, GymTrainer
 from app.models.booking import (Booking, BookingStatus,  # noqa: F401
                                 SessionPackage)
 from app.models.gym import Gym  # noqa: F401
@@ -17,8 +17,8 @@ from app.models.subscription import (ClientSubscription,  # noqa: F401
 from app.models.trainer import Trainer, TrainerCreate, TrainerUpdate
 from app.models.user import User as UserModel
 from app.models.user import UserRole
-from app.models.workout import (Exercise, WorkoutSessionExercise,  # noqa: F401
-                                WorkoutSet)
+from app.models.workout import WorkoutSessionExercise  # noqa: F401
+from app.models.workout import Exercise, WorkoutSet
 
 
 class ClientOnboardSchema(BaseModel):
@@ -46,7 +46,7 @@ def read_trainers(
 def create_trainer(
     trainer_in: TrainerCreate,
     session: Session = Depends(get_session),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(require_role("TRAINER", "SAAS_ADMIN")),
 ):
     # Check if trainer profile exists
     existing_trainer = session.exec(
