@@ -5,7 +5,7 @@
 # ============================================================
 services:
   backend:
-    image: ttl.sh/multi-trainer-backend:0.2.0-47069e3
+    image: ttl.sh/multi-trainer-backend:0.2.0-6febc10
     container_name: gym-saas-backend
     restart: unless-stopped
     ports:
@@ -18,7 +18,7 @@ services:
       db:
         condition: service_healthy
   frontend:
-    image: ttl.sh/multi-trainer-frontend:0.2.0-47069e3
+    image: ttl.sh/multi-trainer-frontend:0.2.0-6febc10
     container_name: gym-saas-frontend
     restart: unless-stopped
     ports:
