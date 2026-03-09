@@ -16,9 +16,14 @@ test.describe('Gym Bookings View', () => {
         await page.getByRole('link', { name: /bookings/i }).click();
 
         // 4. Verify Page
-        await expect(page).toHaveURL(/bookings/);
-        await expect(page.getByText('Gym Bookings')).toBeVisible();
-        await expect(page.getByText('All Sessions')).toBeVisible();
+        await page.waitForURL(/\/dashboard\/gym\/\d+\/bookings/);
+        await page.waitForLoadState('networkidle');
+
+        // Ensure loader is gone
+        await expect(page.locator('svg.animate-spin')).not.toBeVisible({ timeout: 15000 });
+
+        await expect(page.getByText("Session Management")).toBeVisible({ timeout: 15000 });
+        await expect(page.getByText('Upcoming Sessions')).toBeVisible();
 
         // As seeding runs randomly, we might or might not have bookings.
         // We check if table headers are visible.

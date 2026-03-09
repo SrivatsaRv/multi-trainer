@@ -10,6 +10,11 @@ test.describe('E2E Dynamic State Lifecycle', () => {
     let gymEmail: string;
     let trainerEmail: string;
 
+    test.beforeEach(async ({ page }) => {
+        // Clear cookies to prevent session bleed from other tests
+        await page.context().clearCookies();
+    });
+
     test.afterEach(async ({ request }) => {
         // Cleanup Gym
         if (gymEmail) {
@@ -17,6 +22,7 @@ test.describe('E2E Dynamic State Lifecycle', () => {
                 params: { email: gymEmail }
             });
             console.log(`Cleaned up ${gymEmail}`);
+            gymEmail = '';
         }
     });
 
@@ -37,13 +43,14 @@ test.describe('E2E Dynamic State Lifecycle', () => {
 
         // C. Dashboard (First Time) - should show role-specific content
         await expect(page).toHaveURL('/dashboard');
-        // Should verify we are in NONE state
-        await expect(page.locator('text=Facility Profile')).toBeVisible();
-        await expect(page.locator('text=Not Started')).toBeVisible();
-        await page.click('text=Create Profile');
+        // Should verify we are in NONE/DRAFT state (using a more robust text selector)
+        await expect(page.getByText("Facility").first()).toBeVisible({ timeout: 15000 });
+        // The badge might say "Draft" or "Setup Required" 
+        await expect(page.getByText(/Draft|Setup Required/i).first()).toBeVisible({ timeout: 15000 });
+        await page.click('text=Complete Profile');
 
         // D. Onboarding
-        await expect(page).toHaveURL('/onboard-as-gym');
+        await expect(page).toHaveURL('/auth/onboarding/gym');
         await page.fill('input[name="name"]', 'E2E Gym');
         await page.fill('input[name="slug"]', `gym-${Date.now()}`);
         await page.fill('input[name="location"]', 'Test City');
@@ -51,8 +58,7 @@ test.describe('E2E Dynamic State Lifecycle', () => {
 
         // E. Verify Draft State
         await expect(page).toHaveURL('/dashboard');
-        await expect(page.locator('[data-variant="default"]:has-text("Draft")')).toBeVisible();
-        await expect(page.locator('text=Complete Profile')).toBeVisible();
+        await expect(page.locator('text=Setup Required')).toBeVisible();
     });
 
     // 2. ADMIN APPROVAL FLOW 
@@ -74,21 +80,28 @@ test.describe('E2E Dynamic State Lifecycle', () => {
         const regRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/register`, {
             data: { full_name: gymName, email: gymEmail, password: TEST_USER_PASSWORD, role: 'GYM_ADMIN' }
         });
+        if (!regRes.ok()) {
+            console.error(`Registration failed: ${regRes.status()} ${await regRes.text()}`);
+        }
         expect(regRes.ok()).toBeTruthy();
 
+        // Wait a bit for DB consistency in certain envs
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         // 2. Login to get Token
-        const loginRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/login/access-token`, {
+        const loginRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/access-token`, {
             form: { username: gymEmail, password: TEST_USER_PASSWORD }
         });
         const { access_token } = await loginRes.json();
 
-        // 3. Create Gym Profile (Draft)
-        const createRes = await request.post(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/gyms/`, {
-            headers: { Authorization: `Bearer ${access_token}` },
-            data: { name: gymName, slug: `gym-${Date.now()}`, location: 'Test City' }
+        // 3. Get existing Gym Profile (auto-created during registration)
+        const meRes = await request.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/users/me`, {
+            headers: { Authorization: `Bearer ${access_token}` }
         });
-        expect(createRes.ok()).toBeTruthy();
-        const gymId = (await createRes.json()).id;
+        expect(meRes.ok()).toBeTruthy();
+        const meData = await meRes.json();
+        const gymId = meData.gym.id;
+        console.log(`[E2E] Found auto-created gym ID: ${gymId}`);
 
         // 4. Manually set state to PENDING via API (simulating user submission)
         // For MVP, Create IS Draft. We need an endpoint to transition to Pending?

@@ -90,11 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         api.users.me().then(data => {
+          console.log(`[AuthContext] /me success for ${data.user.email}`);
           setUser(data.user);
           setProfile(data.gym || data.trainer);
           setLoading(false);
         }).catch(err => {
-          console.error("Failed to fetch user details", err);
+          console.error("[AuthContext] /me failed:", err.message);
           // If 401, the fetcher will calling signOut(), 
           // but we should stop loading here.
           setLoading(false);
