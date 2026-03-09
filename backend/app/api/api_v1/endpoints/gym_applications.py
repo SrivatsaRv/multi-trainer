@@ -16,7 +16,7 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.get("/", response_model=List[GymApplication])
+@router.get("", response_model=List[GymApplication])
 def read_applications(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
@@ -33,7 +33,7 @@ def read_applications(
     return trainer.gym_applications
 
 
-@router.post("/", response_model=GymApplication, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=GymApplication, status_code=status.HTTP_201_CREATED)
 def create_application(
     application_in: GymApplicationCreate,
     session: Session = Depends(get_session),

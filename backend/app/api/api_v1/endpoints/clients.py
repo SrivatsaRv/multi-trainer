@@ -33,7 +33,7 @@ def read_client_profile(
     return profile
 
 
-@router.post("/", response_model=ClientProfile, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ClientProfile, status_code=status.HTTP_201_CREATED)
 def create_client_profile(
     profile_in: ClientProfileCreate,
     session: Session = Depends(get_session),
